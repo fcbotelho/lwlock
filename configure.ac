@@ -33,24 +33,6 @@ LT_LIB_M
 LDFLAGS="$LIBM $LDFLAGS"
 #CFLAGS="-Wall -g"
 
-AC_PROG_CXX
-CXXFLAGS="-Wall -Wno-unused-function -DNDEBUG -O3 -fomit-frame-pointer $CXXFLAGS"
-AC_ENABLE_CXXMPH
-if test x$cxxmph = xtrue; then
-  AC_COMPILE_STDCXX_0X
-  if test x$ac_cv_cxx_compile_cxx0x_native = "xno"; then
-    if test x$ac_cv_cxx_compile_cxx0x_cxx = "xyes"; then
-      CXXFLAGS="$CXXFLAGS -std=c++0x"
-    elif test x$ac_cv_cxx_compile_cxx0x_gxx = "xyes"; then
-      CXXFLAGS="$CXXFLAGS -std=gnu++0x"
-    else
-      AC_MSG_ERROR("cxxmph demands a working c++0x compiler.")
-    fi
-  fi
-  AC_SUBST([CXXMPH], "cxxmph")
-fi
-AM_CONDITIONAL([USE_CXXMPH], [test "$cxxmph" = true])
-
 # Unit tests based on the check library. Disabled by default.
 # We do not use pkg-config because it is inconvenient for all developers to
 # have check library installed.
@@ -69,5 +51,5 @@ AC_SUBST(CHECK_LIBS)
 AC_SUBST(CHECK_CFLAGS)
 
 AC_CHECK_SPOON
-AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile examples/Makefile man/Makefile lwlock.pc ])
+AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile examples/Makefile man/Makefile lwlock.pc])
 AC_OUTPUT
