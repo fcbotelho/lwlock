@@ -42,7 +42,7 @@ static void lw_dummyprintf(const char *format, ...)
 #ifndef __GNUC__
 #define LW_DEBUGP lw_debugprintf
 #else
-#define LW_DEBUGP(args...) do { fprintf(stderr, "%s:%d ", __FILE__, __LINE__); fprintf(stderr, ## args); } while(0)
+#define LW_DEBUGP(args...) do { fprintf(stderr, "%s: %s: %d ", __FILE__, __FUNCTION__, __LINE__); fprintf(stderr, ## args); } while(0)
 #endif
 #else
 #ifndef __GNUC__
@@ -50,4 +50,23 @@ static void lw_dummyprintf(const char *format, ...)
 #else
 #define LW_DEBUGP(args...)
 #endif
-#endif
+#endif // LW_DEBUG
+
+#include <assert.h>
+#define lw_assert assert
+
+#include "lw_compiler.h"
+#define lw_verify(_x) \
+    do { \
+        if (lw_predict_likely(_x)) { \
+            /* noop */ \
+        } else { \
+            fprintf(stderr, \
+                    "%s: %s: %d !(%s)", \
+                    __FILE__, \
+                    __FUNCTION__, \
+                    __LINE__, \
+                    #_x); \
+            abort(); \
+        } \
+    } while (0)
