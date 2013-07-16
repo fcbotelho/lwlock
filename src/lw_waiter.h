@@ -3,7 +3,6 @@
 
 #include "lw_types.h"
 #include "lw_event.h"
-#include <time.h>
 
 /**
  * Thread wait domains: Each domain can have upto LW_WAITER_ID_MAX waiters.
@@ -65,19 +64,19 @@ lw_waiter_from_id(lw_uint32_t id)
 static inline void
 lw_do_wait(lw_waiter_t *waiter)
 {
-    dd_event_wait(&waiter->event, (waiter)->event.base.wait_src);
+    lw_event_wait(&waiter->event, (waiter)->event.base.wait_src);
 }
 
 static inline int
 lw_do_timedwait(lw_waiter_t *waiter, IN struct timespec *abstime)
 {
-    return dd_event_timedwait(&waiter->event, (waiter)->event.base.wait_src, abstime);
+    return lw_event_timedwait(&waiter->event, (waiter)->event.base.wait_src, abstime);
 }
 
 static inline void
 lw_wakeup_from_wait(lw_waiter_t *waiter, void *arg)
 {
-    dd_event_signal(&waiter->event, arg);
+    lw_event_signal(&waiter->event, arg);
 }
 
 static inline void
@@ -96,7 +95,7 @@ lw_wake_all(lw_waiter_domain_t *domain, lw_uint32_t _id, void *arg)
         id = waiter->next;
         waiter->next = LW_WAITER_ID_MAX;
         waiter->prev = LW_WAITER_ID_MAX;
-        dd_event_signal(&waiter->event, arg);
+        lw_event_signal(&waiter->event, arg);
     }
 }
 
