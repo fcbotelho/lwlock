@@ -1,5 +1,5 @@
 #ifndef __LW_WAITER_H__
-#ifndef __LW_MUTEX_H__
+#define __LW_WAITER_H__
 
 #include "lw_types.h"
 #include "lw_event.h"
