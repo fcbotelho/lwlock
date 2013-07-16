@@ -5,6 +5,13 @@
 #define LW_OUT
 #define LW_INOUT
 
+#ifndef FALSE
+#define FALSE   (0)
+#endif
+#ifndef TRUE
+#define TRUE    (1)
+#endif
+
 typedef char lw_int8_t;
 typedef unsigned char lw_uint8_t;
 
