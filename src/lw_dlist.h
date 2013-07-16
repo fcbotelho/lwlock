@@ -1,34 +1,49 @@
 #ifndef __LW_DLIST_H__
 #define __LW_DLIST_H__
 
-
+#include "lw_debug.h"
+#include "lw_magic.h"
 /*
  * Generic Linear Doubly Linked List Support.
  */
 
-#define DL_DBG_BADELEM   ((delem_t *)0xdeadbeef)
+#define LW_DL_DBG_BADELEM   ((lw_delem_t *)0xdeadbeef)
+#define LW_DL_DBG_BADLIST   ((lw_dlist_t *)0xfeedface) 
+
+typedef enum {
+    LW_DL_ON_LIST     = LW_MAGIC(0x1102), /**< lw_delem_t value when an element is on a list */
+    LW_DL_OFF_LIST    = LW_MAGIC(0x0913), /**< lw_delem_t value when an element is off lists */
+    LW_DL_INITIALIZED = LW_MAGIC(0x0627), /**< lw_dlist_t value when it has been initialized */
+} lw_dl_magic_t;
 
 /*
  * Forward reference for use within a list element structure.
  */
-typedef struct dlist_struct dlist_t;
+typedef struct lw_dlist_struct lw_dlist_t;
 
 /**
  * Generic List Element structure
  */
 typedef struct {
-    void *next;    /**< Pointer to the next element in the list */
-    void *prev;    /**< Pointer to the previous element in the list */
-} delem_t;
+    void *lw_delem_next;    /**< Pointer to the next element in the list */
+    void *lw_delem_prev;    /**< Pointer to the previous element in the list */
+#ifdef LW_DEBUG
+    lw_dlist_t *lw_delem_list;
+    lw_dl_magic_t lw_delem_magic; 
+#endif    
+} lw_delem_t;
 
 
 /**
  * Generic List Head structure
  */
-struct dlist_struct {
-    delem_t *head;        /**< Pointer to the first element in the list */
-    delem_t *tail;        /**< Pointer to the last element in the list */
-    dd_uint32_t count;    /**< Number of members in the list */
+struct lw_dlist_struct {
+    lw_delem_t *lw_dlist_head;    /**< Pointer to the first element in the list */
+    lw_delem_t *lw_dlist_tail;    /**< Pointer to the last element in the list */
+    dd_uint32_t lw_dlist_count;   /**< Number of members in the list */
+#ifdef LW_DEBUG
+    lw_dl_magic_t lw_dlist_magic;
+#endif
 };
 
 /**
@@ -36,22 +51,14 @@ struct dlist_struct {
  *
  * @param list (i/o) the list to be initialized.
  */
-static inline void dl_init(dlist_t *list)
-{
-    list->head = list->tail = NULL;
-    list->count = 0;
-}
+extern void lw_dl_init(LW_INOUT lw_dlist_t *list);
 
 /**
  * Destroy a list, ensuring it cannot be used again.
  *
  * @param list (i/o) the list to be initialized.
  */
-static inline void dl_destroy(dlist_t *list)
-{
-    list->head = list->tail = NULL;
-    list->count = 0;
-}
+extern void lw_dl_destroy(LW_INOUT lw_dlist_t *list);
 
 /**
  * Mark the element so that it is easily and reliably recognizable as
@@ -59,10 +66,8 @@ static inline void dl_destroy(dlist_t *list)
  *
  * @param elem (i/o) the list element to be marked as an orphan.
  */
-static inline void dl_init_elem(delem_t *elem)
-{
-    elem->next = elem->prev = DL_DBG_BADELEM;
-}
+extern void lw_dl_init_elem(LW_INOUT lw_delem_t *elem);
+
 
 /**
  * Append the specified element at the end of the specified list.
@@ -70,67 +75,20 @@ static inline void dl_init_elem(delem_t *elem)
  * @param list (i/o) the list to which the element is to be appended.
  * @param elem (i/o) the list element to be inserted.
  */
-static inline void dl_append_at_end(dlist_t *list, delem_t *elem)
-{
-
-    if (list->head == NULL) {
-        list->head = list->tail = elem;
-        elem->next = elem->prev = NULL;
-    } else {
-        elem->prev = list->tail;
-        elem->next = NULL;
-        list->tail->next = elem;
-        list->tail = elem;
-    }
-
-    list->count++;
-
-}
+extern void 
+dl_append_at_end(LW_INOUT lw_dlist_t *list, 
+                 LW_INOUT lw_delem_t *elem);
 
 /**
  * Remove the first element from the specified list.
  *
- * @param list (i) the list from which the element is to be
- *     removed.
+ * @param list (i/o) the list from which the element is to be
+ *        removed.
  *
  * @return A pointer to the first element in the list if the list is
- *     not empty or a NULL pointer if the list is empty.
+ *         not empty or a NULL pointer if the list is empty.
  */
-static inline void *_dl_dequeue(dlist_t *list)
-{
-    delem_t *elem;
-    delem_t *n;
-
-    elem = list->head;
-
-    if (elem != NULL) {
-        dd_assert(elem->prev == NULL);
-
-        n = elem->next;
-
-        if (n != NULL) {
-            dd_assert(n->prev == elem);
-            n->prev = NULL;
-        } else {
-            list->tail = NULL;
-        }
-        list->head = n;
-
-        lw_verify(list->count > 0);
-        list->count--;
-
-        /*
-         * Reset the link fields within the element
-         */
-        dl_init_elem(elem);
-    } else {
-        lw_assert(list->tail == NULL);
-        lw_verify(list->count == 0);
-    }
-
-    return elem;
-}
-
+extern void *dl_dequeue(LW_INOUT lw_dlist_t *list);
 
 #endif
 

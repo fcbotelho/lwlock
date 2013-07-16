@@ -47,7 +47,7 @@ lw_waiter_alloc_one_array(lw_waiter_global_domain_t *gd)
         wait->id = gd->arrays_num * LW_WAITERS_PER_ARRAY + i;
         wait->initialized = FALSE;
         wait->domain = &gd->domain;
-        dl_init_elem(&wait->event.base.iface.link);
+        lw_dl_init_elem(&wait->event.base.iface.link);
         dl_append_at_end(&gd->free_list, &wait->event.base.iface.link);
     }
     gd->arrays_num++;
@@ -67,7 +67,7 @@ lw_waiter_init_global(void)
 
     global_waiters_domain.arrays_num = 0;
     lw_verify(LW_WAITERS_PER_ARRAY == 256);
-    dl_init(&global_waiters_domain.free_list);
+    lw_dl_init(&global_waiters_domain.free_list);
     for (i = 0; i < LW_WAITERS_GLOBAL_SIZE; i++) {
         global_waiters_domain.waiters[i] = NULL;
     }
@@ -99,7 +99,7 @@ lw_waiter_dealloc_all(lw_waiter_global_domain_t *gd)
     while ((wait = dl_dequeue(&gd->free_list)) != NULL) {
         /* Do nothing */
     }
-    dl_destroy(&gd->free_list);
+    lw_dl_destroy(&gd->free_list);
 
     for (i = 0; i < gd->arrays_num; i++) {
         /* Unfortunately, not all threads have exited at this point and we have
@@ -190,7 +190,7 @@ lw_waiter_free_global(lw_waiter_domain_t *domain, lw_waiter_t *waiter)
 
         lw_event_destroy(&waiter->event);
         waiter->initialized = FALSE;
-        dl_init_elem(&waiter->event.base.iface.link);
+        lw_dl_init_elem(&waiter->event.base.iface.link);
         dl_append_at_end(&gd->free_list, &waiter->event.base.iface.link);
     }
     pthread_mutex_unlock(&_dd_global_lock);

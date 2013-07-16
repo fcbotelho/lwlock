@@ -52,8 +52,12 @@ static void lw_dummyprintf(const char *format, ...)
 #endif
 #endif // LW_DEBUG
 
+#ifdef LW_DEBUG
 #include <assert.h>
 #define lw_assert assert
+#else
+#define lw_assert
+#endif
 
 #include "lw_compiler.h"
 #define lw_verify(_x) \

@@ -44,7 +44,7 @@ extern int lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex);
 
 extern void 
 lw_mutex_lock(LW_INOUT lw_mutex_t *lw_mutex, 
-              LW_INOUT lw_lock_stats_t *lw_lock_stats);
+                                    LW_INOUT lw_lock_stats_t *lw_lock_stats);
 
 /* Lock a mutex if not currently owner. Return TRUE if caller was not owner
  * already. FALSE otherwise. In either case, lock is held on return.

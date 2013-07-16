@@ -27,7 +27,7 @@ typedef int (*lw_event_wait_func_t)(lw_event_t event,
 typedef lw_bool_t (*lw_event_wakeup_pending_func_t)(lw_event_t event, void *arg);
 
 struct lw_event_iface_s {
-    delem_t                         link;
+    lw_delem_t                         link;
     lw_event_signal_func_t          signal_cb;
     lw_event_wait_func_t            wait_cb;
     lw_event_wakeup_pending_func_t  wakeup_pending;
@@ -82,7 +82,7 @@ lw_base_event_init(lw_base_event_t *base_event,
                    lw_event_wait_func_t wait_cb,
                    lw_event_wakeup_pending_func_t wakeup_pending)
 {
-    dl_init_elem(&base_event->iface.link);
+    lw_dl_init_elem(&base_event->iface.link);
 
     base_event->iface.signal_cb = signal_cb;
     base_event->iface.wait_cb = wait_cb;
