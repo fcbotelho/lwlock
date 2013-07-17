@@ -76,8 +76,8 @@ extern void lw_dl_init_elem(LW_INOUT lw_delem_t *elem);
  * @param elem (i/o) the list element to be inserted.
  */
 extern void 
-dl_append_at_end(LW_INOUT lw_dlist_t *list, 
-                 LW_INOUT lw_delem_t *elem);
+lw_dl_append_at_end(LW_INOUT lw_dlist_t *list, 
+                    LW_INOUT lw_delem_t *elem);
 
 /**
  * Remove the first element from the specified list.
@@ -88,7 +88,7 @@ dl_append_at_end(LW_INOUT lw_dlist_t *list,
  * @return A pointer to the first element in the list if the list is
  *         not empty or a NULL pointer if the list is empty.
  */
-extern void *dl_dequeue(LW_INOUT lw_dlist_t *list);
+extern void *lw_dl_dequeue(LW_INOUT lw_dlist_t *list);
 
 #endif
 

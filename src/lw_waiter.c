@@ -48,7 +48,7 @@ lw_waiter_alloc_one_array(lw_waiter_global_domain_t *gd)
         wait->initialized = FALSE;
         wait->domain = &gd->domain;
         lw_dl_init_elem(&wait->event.base.iface.link);
-        dl_append_at_end(&gd->free_list, &wait->event.base.iface.link);
+        lw_dl_append_at_end(&gd->free_list, &wait->event.base.iface.link);
     }
     gd->arrays_num++;
 }
@@ -96,7 +96,7 @@ lw_waiter_dealloc_all(lw_waiter_global_domain_t *gd)
 
     dd_verify(gd->arrays_num != 0);
 
-    while ((wait = dl_dequeue(&gd->free_list)) != NULL) {
+    while ((wait = lw_dl_dequeue(&gd->free_list)) != NULL) {
         /* Do nothing */
     }
     lw_dl_destroy(&gd->free_list);
@@ -156,7 +156,7 @@ lw_waiter_alloc_global(lw_waiter_domain_t *domain)
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
     
     pthread_mutex_lock(&_dd_global_lock);
-    wait = dl_dequeue(&gd->free_list);
+    wait = lw_dl_dequeue(&gd->free_list);
     if (wait == NULL) {
         if (gd->arrays_num == 0) {
             /* Global domain was shutodwn already */
@@ -164,7 +164,7 @@ lw_waiter_alloc_global(lw_waiter_domain_t *domain)
             return NULL;
         }
         lw_waiter_alloc_one_array(gd);
-        wait = dl_dequeue(&gd->free_list);
+        wait = lw_dl_dequeue(&gd->free_list);
     }
     pthread_mutex_unlock(&_dd_global_lock);
 
@@ -191,7 +191,7 @@ lw_waiter_free_global(lw_waiter_domain_t *domain, lw_waiter_t *waiter)
         lw_event_destroy(&waiter->event);
         waiter->initialized = FALSE;
         lw_dl_init_elem(&waiter->event.base.iface.link);
-        dl_append_at_end(&gd->free_list, &waiter->event.base.iface.link);
+        lw_dl_append_at_end(&gd->free_list, &waiter->event.base.iface.link);
     }
     pthread_mutex_unlock(&_dd_global_lock);
 }
