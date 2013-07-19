@@ -33,6 +33,66 @@ LT_LIB_M
 LDFLAGS="$LIBM $LDFLAGS"
 #CFLAGS="-Wall -g"
 
+dnl Detect target arch type
+AC_ARG_VAR([SED_PROG], [sed utility])
+AC_CHECK_PROGS([SED_PROG],[sed])
+test -z "${SED_PROG}" && AC_MSG_ERROR([sed is required])
+AC_MSG_CHECKING([output architecture])
+x_x86_target=no
+x_amd64_target=no
+OUTPUT_ARCH="$(${CC} ${CPPFLAGS} ${CFLAGS} ${LDFLAGS} -Wl,--verbose 2>&1 | ${SED_PROG} -n 's/^OUTPUT_ARCH(\([[^)]]*\)).*/\1/p')"
+if test -z "${OUTPUT_ARCH}"; then
+	AC_MSG_RESULT([unknown])
+else
+	AC_MSG_RESULT([${OUTPUT_ARCH}])
+	case "${OUTPUT_ARCH}" in
+	i386)
+		x_x86_target=yes
+		;;
+	*x86-64 | *x86_64 | *amd64)
+		if test "$ac_cv_sizeof_unsigned_long" = 4; then
+			x_x86_target=yes
+		else
+			x_amd64_target=yes
+		fi
+		;;
+	esac
+fi
+
+dnl Handle --disable-asm, --enable-asm=x86, --enable-asm=amd64
+AC_ARG_ENABLE([asm],
+	[AS_HELP_STRING([--disable-asm],[disable optimized x86/amd64/padlock/intelaes assembler code])],
+	[x_enable_asm=$enableval], [x_enable_asm=autodetect])
+
+AC_MSG_CHECKING([whether to use optimized 32 bit x86 assembler code])
+if test "$x_enable_asm" = x86 ; then
+	x_enable_x86asm=yes
+elif test "$x_enable_asm" = autodetect ; then
+	x_enable_x86asm=$x_x86_target
+else
+	x_enable_x86asm=no
+fi
+AC_MSG_RESULT([${x_enable_x86asm}])
+
+AC_MSG_CHECKING([whether to use optimized 64 bit amd64 assembler code])
+if test "$x_enable_asm" = amd64 ; then
+	x_enable_amd64asm=yes
+elif test "$x_enable_asm" = autodetect ; then
+	x_enable_amd64asm=$x_amd64_target
+else
+	x_enable_amd64asm=no
+fi
+AC_MSG_RESULT([${x_enable_amd64asm}])
+
+dnl Select x86 asm / amd64 asm / C-language sources
+if test "$x_enable_x86asm" = yes ; then
+	AC_DEFINE([X86_ASM], [1])
+elif test "$x_enable_amd64asm" = yes ; then
+	AC_DEFINE([AMD64_ASM], [1])
+else
+	# dont use any assembler code
+fi
+
 # Unit tests based on the check library. Disabled by default.
 # We do not use pkg-config because it is inconvenient for all developers to
 # have check library installed.
