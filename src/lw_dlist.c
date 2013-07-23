@@ -32,8 +32,8 @@ void lw_dl_init_elem(LW_INOUT lw_delem_t *elem)
 }
 
 void 
-dl_append_at_end(LW_INOUT lw_dlist_t *list, 
-                 LW_INOUT lw_delem_t *elem)
+lw_dl_append_at_end(LW_INOUT lw_dlist_t *list, 
+                    LW_INOUT lw_delem_t *elem)
 {
 
     if (list->lw_dlist_head == NULL) {
@@ -54,7 +54,7 @@ dl_append_at_end(LW_INOUT lw_dlist_t *list,
 #endif
 }
 
-void *dl_dequeue(LW_INOUT lw_dlist_t *list)
+void *lw_dl_dequeue(LW_INOUT lw_dlist_t *list)
 {
     lw_delem_t *elem;
     lw_delem_t *n;
