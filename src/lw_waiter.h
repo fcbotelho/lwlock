@@ -104,7 +104,7 @@ extern void
 lw_waiter_init_global(void);
 
 /* Shutdown the global wiater doamin */
-void
+extern void
 lw_waiter_shutdown_global(void);
 
 
