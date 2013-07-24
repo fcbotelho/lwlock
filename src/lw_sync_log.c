@@ -2,6 +2,7 @@
 
 #include <pthread.h>
 
+/* Pthread key to keep track of thread-specific lw_sync_log_t pointer */
 pthread_key_t lw_sync_log_key;
 
 void
