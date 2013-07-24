@@ -4,7 +4,7 @@
 #include "lw_types.h"
 
 typedef struct lw_lock_stats_s {
-    lw_uint16_t lw_lock_stats_trace_history;
+    lw_bool_t lw_lock_stats_trace_history; /* whether or not to use sync log */
     const char *lw_lock_stats_name;
     lw_atomic32_t lw_lock_stats_lock_contentions;
     lw_atomic32_t lw_lock_stats_unlock_contentions;

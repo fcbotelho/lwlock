@@ -12,7 +12,7 @@ void
 lw_lock_stats_init(INOUT lw_lock_stats_t *lw_lock_stats,
                    IN char *name)
 {
-    lw_lock_stats->lw_lock_stats_trace_history = 1;
+    lw_lock_stats->lw_lock_stats_trace_history = TRUE;
     lw_lock_stats->lw_lock_stats_name = name;
     lw_lock_stats_reset(lw_lock_stats);
 }
