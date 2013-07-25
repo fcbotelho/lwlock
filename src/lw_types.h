@@ -71,27 +71,4 @@ typedef lw_uint16_t lw_waiter_id_t;
  */
 #define LW_UNUSED_PARAMETER(x) ((void) (x))
 
-
-#define LW_MAGIC_BASE  0xABCD 
-
-/*
- * Verify that the provided magic number:
- *    1) Is a hex value
- *    2) Fits within 16 bits
- *
- * We verify both (1) & (2) by appending sufficient hex digits to the
- * value to cause 64-bit overflow if the original value does not fit
- * in 16 bits.  We then right-shift the value 48 bits to obtain the
- * desired 16-bit value.
- */
-#define _LW_VERIFY_HEX16(_n) ((lw_uint32_t) ((_n ## ffffffffffffULL) >> 48))
-
-/*
- * The result of LW_MAGIC() is a 32-bit value whose upper 16 bits are
- * LW_MAGIC_BASE.  These values are appropriate for use in
- * enumerations
- */
-#define LW_MAGIC(_magic_number)   ((LW_MAGIC_BASE << 16) | _LW_VERIFY_HEX16(_magic_number))
-
-
 #endif
