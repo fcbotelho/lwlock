@@ -5,12 +5,14 @@
 #include <time.h>
 
 static inline lw_uint64_t
-rdtsc(void)
+lw_rdtsc(void)
 {
 #if (defined(AMD64_ASM))  // support for AMD 64 bit assembly
+
     lw_uint32_t high, low;
     asm volatile("rdtsc":"=a"(low), "=d"(high));
     return (((lw_uint64_t)high << 32) | low);
+
 #else  // !defined(AMD64_ASM)
     struct timeval tv;
     int ret = 0;
@@ -34,6 +36,52 @@ rdtsc(void)
 extern lw_uint32_t lw_cpu_khz;
 void lw_cycles_init(void);
 
+static inline lw_uint64_t __attribute__ ((always_inline))                              
+lw_cycle(void)
+{
+    return lw_rdtsc();                                                                   
+}   
 
+static inline lw_uint64_t                     
+lw_cycle_to_ns(lw_uint64_t cycles)
+{
+    return (1000 * 1000 * cycles) / lw_cpu_khz;         
+}   
+
+static inline lw_uint64_t                 
+lw_ns_to_cycle(lw_uint64_t ns)                             
+{
+    return (ns * lw_cpu_khz) / (1000*1000);
+}   
+
+static inline lw_uint64_t
+lw_cycle_to_us(lw_uint64_t cycles)  
+{
+    return 1000 * cycles / lw_cpu_khz;                                           
+}   
+
+static inline lw_uint64_t                                        
+lw_us_to_cycle(lw_uint64_t us)
+{
+    return (us * lw_cpu_khz) / 1000;
+}
+
+static inline lw_uint64_t
+lw_cycle_to_ms(lw_uint64_t cycles)
+{
+    return cycles / lw_cpu_khz;
+}
+
+static inline lw_uint64_t
+lw_ms_to_cycle(lw_uint64_t ms)
+{
+    return (ms * lw_cpu_khz);
+}
+
+static inline lw_uint64_t
+lw_cycle_to_sec(lw_uint64_t cycles)
+{
+    return cycles / lw_cpu_khz / 1000;
+}
 
 #endif
