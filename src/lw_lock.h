@@ -1,6 +1,5 @@
 #ifndef __LW_LOCK_H__
 #define __LW_LOCK_H__
-
 #include "lw_types.h"
 /**
  * Initialization function
@@ -23,6 +22,6 @@ lw_lock_init(void);
  * the APIs in the lw_lock library.
  */
 extern void 
-lw_lock_destroy(void);
+lw_lock_shutdown(void);
 
 #endif /* __LW_LOCK_H__ */
