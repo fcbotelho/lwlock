@@ -19,7 +19,7 @@ typedef struct {
 
 static lw_waiter_global_domain_t   global_waiters_domain;
 lw_waiter_domain_t *le_waiter_domain_global = &(global_waiters_domain.domain);
-pthread_mutex_t _lw_global_lock;
+pthread_mutex_t _lw_global_domain_lock;
 
 /* Default stats for lwlocks. */
 lw_lock_stats_t lw_lock_global_stats;
@@ -38,7 +38,7 @@ lw_waiter_alloc_one_array(lw_waiter_global_domain_t *gd)
 {
     lw_uint32_t i;
     lw_waiter_t *waiters_row;
-    /* need to assert here that _dd_global_lock is held by this thread */
+    /* need to assert here that _lw_global_domain_lock is held by this thread */
     lw_verify(gd->arrays_num < LW_WAITERS_GLOBAL_SIZE);
     gd->waiters[gd->arrays_num] = malloc(sizeof(lw_waiter_t) * LW_WAITERS_PER_ARRAY);
     waiters_row = gd->waiters[gd->arrays_num];
@@ -61,9 +61,9 @@ lw_waiter_init_global(void)
     lw_lock_global_stats.name = "lw_lock_global_stats";
     lw_verify(sizeof(lw_lock_t) == sizeof(lw_uint32_t));
 
-    pthread_mutex_init(&_dd_global_lock, NULL);
+    pthread_mutex_init(&_lw_global_domain_lock, NULL);
 
-    pthread_mutex_lock(&_dd_global_lock);
+    pthread_mutex_lock(&_lw_global_domain_lock);
 
     global_waiters_domain.arrays_num = 0;
     lw_verify(LW_WAITERS_PER_ARRAY == 256);
@@ -80,7 +80,7 @@ lw_waiter_init_global(void)
     global_waiters_domain.domain.get_waiter = le_waiter_get_global;
     global_waiters_domain.domain.id2waiter = lw_waiter_from_id_global;
 
-    pthread_mutex_unlock(&_dd_global_lock);
+    pthread_mutex_unlock(&_lw_global_domain_lock);
 }
 
 /**
@@ -92,7 +92,7 @@ lw_waiter_dealloc_all(lw_waiter_global_domain_t *gd)
     lw_uint32_t i;
     lw_waiter_t *wait;
 
-    /* need to assert here that _dd_global_lock is held by this thread */
+    /* need to assert here that _lw_global_domain_lock is held by this thread */
 
     dd_verify(gd->arrays_num != 0);
 
@@ -102,11 +102,8 @@ lw_waiter_dealloc_all(lw_waiter_global_domain_t *gd)
     lw_dl_destroy(&gd->free_list);
 
     for (i = 0; i < gd->arrays_num; i++) {
-        /* Unfortunately, not all threads have exited at this point and we have
-         * no choice but to deallocate the structures. The timer thread, nvl_append
-         * thread and host threads are the ones that remain. If any of the remaining
-         * thread tries to access its wait_t, a panic could happen. But these
-         * threads don't do that.
+        /* All the threads that use this domain must have exited at this point. 
+         * If not and if they try to access their waiters, there will be trouble.
          */
         free(gd->waiters[i]);
     }
@@ -143,9 +140,9 @@ lw_waiter_shutdown_global(void)
  
     /* Free the lw_waiter_t for calling thread */
     lw_waiter_dealloc_global();
-    pthread_mutex_lock(&_dd_global_lock);
+    pthread_mutex_lock(&_lw_global_domain_lock);
     lw_waiter_dealloc_all(&global_waiters_domain);
-    pthread_mutex_unlock(&_dd_global_lock);
+    pthread_mutex_unlock(&_lw_global_domain_lock);
 
 }
 
@@ -155,18 +152,18 @@ lw_waiter_alloc_global(lw_waiter_domain_t *domain)
     lw_waiter_t *wait;
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
     
-    pthread_mutex_lock(&_dd_global_lock);
+    pthread_mutex_lock(&_lw_global_domain_lock);
     wait = lw_dl_dequeue(&gd->free_list);
     if (wait == NULL) {
         if (gd->arrays_num == 0) {
             /* Global domain was shutodwn already */
-            pthread_mutex_unlock(&_dd_global_lock);
+            pthread_mutex_unlock(&_lw_global_domain_lock);
             return NULL;
         }
         lw_waiter_alloc_one_array(gd);
         wait = lw_dl_dequeue(&gd->free_list);
     }
-    pthread_mutex_unlock(&_dd_global_lock);
+    pthread_mutex_unlock(&_lw_global_domain_lock);
 
     lw_verify(wait != NULL);
     lw_verify(wait->initialized == FALSE);
@@ -182,7 +179,7 @@ void
 lw_waiter_free_global(lw_waiter_domain_t *domain, lw_waiter_t *waiter)
 {
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
-    pthread_mutex_lock(&_dd_global_lock);
+    pthread_mutex_lock(&_lw_global_domain_lock);
     if (gd->arrays_num > 0) { /* If this thread exits after  */
         lw_verify(waiter != NULL);
         lw_verify(waiter->event.base.wait_src == NULL);
@@ -193,7 +190,7 @@ lw_waiter_free_global(lw_waiter_domain_t *domain, lw_waiter_t *waiter)
         lw_dl_init_elem(&waiter->event.base.iface.link);
         lw_dl_append_at_end(&gd->free_list, &waiter->event.base.iface.link);
     }
-    pthread_mutex_unlock(&_dd_global_lock);
+    pthread_mutex_unlock(&_lw_global_domain_lock);
 }
 
 static lw_waiter_t *
