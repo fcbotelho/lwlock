@@ -3,18 +3,21 @@
 #include <errno.h>
 
 static void
-lw_thread_event_signal(lw_event_t _event, void *arg);
+lw_thread_event_signal(LW_INOUT lw_event_t _event, 
+                       LW_INOUT void *arg);
 
 static int
-lw_thread_event_wait(lw_event_t _event,
-                     void *arg,
-                     const struct timespec *abstime);
+lw_thread_event_wait(LW_INOUT lw_event_t _event,
+                     LW_INOUT void *arg,
+                     LW_INOUT const struct timespec *abstime);
 
 static lw_bool_t
-lw_thread_event_wakeup_pending(lw_event_t _event, void *arg);
+lw_thread_event_wakeup_pending(LW_INOUT lw_event_t _event, 
+                               LW_INOUT void *arg);
 
 static void
-lw_thread_event_signal(lw_event_t _event, void *arg)
+lw_thread_event_signal(LW_INOUT lw_event_t _event, 
+                       LW_INOUT void *arg)
 {
     LW_UNUSED_PARAMETER(arg);
     lw_thread_event_t *event = LW_EVENT_2_THREAD_EVENT(_event);
@@ -30,7 +33,8 @@ lw_thread_event_signal(lw_event_t _event, void *arg)
 }
 
 static lw_bool_t
-lw_thread_event_wakeup_pending(lw_event_t _event, void *arg)
+lw_thread_event_wakeup_pending(LW_INOUT lw_event_t _event, 
+                               LW_INOUT void *arg)
 {
     LW_UNUSED_PARAMETER(arg);
     lw_thread_event_t *event = LW_EVENT_2_THREAD_EVENT(_event);
@@ -46,9 +50,9 @@ lw_thread_event_wakeup_pending(lw_event_t _event, void *arg)
  * thread to wake it up.
  */
 static int
-lw_thread_event_wait(lw_event_t _event,
-                     void *arg,
-                     const struct timespec *abstime)
+lw_thread_event_wait(LW_INOUT lw_event_t _event,
+                     LW_INOUT void *arg,
+                     LW_IN struct timespec *abstime)
 {
     int ret = 0;
     lw_thread_event_t *event = DD_EVENT_2_THREAD_EVENT(_event);
@@ -97,7 +101,7 @@ lw_thread_event_wait(lw_event_t _event,
 }
 
 void
-lw_thread_event_init(lw_thread_event_t *thread_event)
+lw_thread_event_init(LW_INOUT lw_thread_event_t *thread_event)
 {   
     int ret;
     pthread_condattr_t cond_attr;
@@ -129,7 +133,7 @@ lw_thread_event_init(lw_thread_event_t *thread_event)
 }
 
 void
-lw_thread_event_destroy(lw_thread_event_t *event)
+lw_thread_event_destroy(LW_INOUT lw_thread_event_t *event)
 {
     lw_verify(event->lw_thread_event_base.lw_base_event_wait_src == NULL); 
     lw_verify(!event->lw_thread_event_signal_pending);

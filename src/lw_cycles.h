@@ -43,43 +43,43 @@ lw_cycle(void)
 }   
 
 static inline lw_uint64_t                     
-lw_cycle_to_ns(lw_uint64_t cycles)
+lw_cycle_to_ns(LW_IN lw_uint64_t cycles)
 {
     return (1000 * 1000 * cycles) / lw_cpu_khz;         
 }   
 
 static inline lw_uint64_t                 
-lw_ns_to_cycle(lw_uint64_t ns)                             
+lw_ns_to_cycle(LW_IN lw_uint64_t ns)                             
 {
     return (ns * lw_cpu_khz) / (1000*1000);
 }   
 
 static inline lw_uint64_t
-lw_cycle_to_us(lw_uint64_t cycles)  
+lw_cycle_to_us(LW_IN lw_uint64_t cycles)  
 {
     return 1000 * cycles / lw_cpu_khz;                                           
 }   
 
 static inline lw_uint64_t                                        
-lw_us_to_cycle(lw_uint64_t us)
+lw_us_to_cycle(LW_IN lw_uint64_t us)
 {
     return (us * lw_cpu_khz) / 1000;
 }
 
 static inline lw_uint64_t
-lw_cycle_to_ms(lw_uint64_t cycles)
+lw_cycle_to_ms(LW_IN lw_uint64_t cycles)
 {
     return cycles / lw_cpu_khz;
 }
 
 static inline lw_uint64_t
-lw_ms_to_cycle(lw_uint64_t ms)
+lw_ms_to_cycle(LW_IN lw_uint64_t ms)
 {
     return (ms * lw_cpu_khz);
 }
 
 static inline lw_uint64_t
-lw_cycle_to_sec(lw_uint64_t cycles)
+lw_cycle_to_sec(LW_IN lw_uint64_t cycles)
 {
     return cycles / lw_cpu_khz / 1000;
 }

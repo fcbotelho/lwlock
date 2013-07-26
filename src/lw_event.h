@@ -66,7 +66,8 @@ struct lw_thread_event_s {
  * continue.
  */
 static inline void
-lw_event_signal(lw_event_t _event, void *arg)
+lw_event_signal(LW_INOUT lw_event_t _event, 
+                LW_INOUT void *arg)
 {
     lw_event_iface_t *event = LW_EVENT_2_IFACE(_event);
     lw_assert(event->lw_event_iface_magic == LW_EVENT_MAGIC);
@@ -74,9 +75,9 @@ lw_event_signal(lw_event_t _event, void *arg)
 }
  
 static inline int
-lw_event_timedwait(lw_event_t _event,
-                   void *arg,
-                   const struct timespec *abstime)
+lw_event_timedwait(LW_INOUT lw_event_t _event,
+                   LW_INOUT void *arg,
+                   LW_IN struct timespec *abstime)
 {
     lw_event_iface_t *event = DD_EVENT_2_IFACE(_event);
     lw_asserta(event->lw_event_iface_magic == LW_EVENT_MAGIC);
@@ -84,24 +85,26 @@ lw_event_timedwait(lw_event_t _event,
 }
 
 static inline void
-lw_event_wait(lw_event_t _event, void *arg)
+lw_event_wait(LW_INOUT lw_event_t _event, 
+              LW_INOUT void *arg)
 {
     int ret = lw_event_timedwait(_event, arg, NULL);
     dd_verify(ret == 0);
 }
 
 static inline dd_bool_t
-dd_event_wakeup_pending(dd_event_t _event, void *arg)
+dd_event_wakeup_pending(LW_INOUT dd_event_t _event, 
+                        LW_INOUT void *arg)
 {
     dd_event_iface_t *event = DD_EVENT_2_IFACE(_event);
     lw_assert(event->lw_event_iface_magic == LW_EVENT_MAGIC);
     return event->lw_event_iface_wakeup_pending(event, arg);
 }
 static inline void
-lw_base_event_init(lw_base_event_t *base_event,
-                   lw_event_signal_func_t signal,
-                   lw_event_wait_func_t wait,
-                   lw_event_wakeup_pending_func_t wakeup_pending)
+lw_base_event_init(LW_INOUT lw_base_event_t *base_event,
+                   LW_INOUT lw_event_signal_func_t signal,
+                   LW_INOUT lw_event_wait_func_t wait,
+                   LW_IOUT  lw_event_wakeup_pending_func_t wakeup_pending)
 {
     lw_dl_init_elem(&base_event->lw_base_event_iface.lw_event_iface_link);
 
@@ -116,8 +119,8 @@ lw_base_event_init(lw_base_event_t *base_event,
     base_event->lw_base_event_tag = LW_MAX_UINT64;
 }
 
-extern void lw_thread_event_init(dd_thread_event_t *thread_event);
-extern void lw_thread_event_destroy(dd_thread_event_t *thread_event);
+extern void lw_thread_event_init(LW_INOUT dd_thread_event_t *thread_event);
+extern void lw_thread_event_destroy(LW_INOUT dd_thread_event_t *thread_event);
 
 #endif
 

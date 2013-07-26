@@ -12,9 +12,6 @@ void lw_lock_init(void)
     lw_atomic_init();
     lw_waiter_init_global();
     lw_cycles_init();
-    // TODO lw_thread_event_init is not being called correctly.
-    // commenting it out for now.
-    // lw_thread_event_init();
     lw_lock_stats_global_init();
     lw_sync_log_init();
 }
@@ -23,9 +20,6 @@ void lw_lock_shutdown(void)
 {
     lw_atomic_destroy();
     lw_waiter_shutdown_global();
-    // TODO lw_thread_event_destroy is not being called correctly.
-    // commenting it out for now.
-    // lw_thread_event_destroy();
     lw_sync_log_shutdown();
 }
 

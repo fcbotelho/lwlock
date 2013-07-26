@@ -60,6 +60,5 @@ void
 lw_lock_stats_global_init(void)
 {
     lw_lock_stats_init(&lw_lock_global_stats, "lw_lock_global_stats");
-
 }
 
