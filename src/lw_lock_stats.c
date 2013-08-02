@@ -6,8 +6,6 @@
 
 lw_lock_stats_t lw_lock_global_stats;
 
-
-
 void
 lw_lock_stats_init(INOUT lw_lock_stats_t *lw_lock_stats,
                    IN char *name)
@@ -53,8 +51,6 @@ lw_lock_stats_str(IN lw_lock_stats_t *lw_lock_stats,
              lc, lct / 1000, lct % 1000,
              uc, uct / 1000, uct % 1000);
 }
-
-
 
 void
 lw_lock_stats_global_init(void)

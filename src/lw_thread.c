@@ -13,3 +13,9 @@ struct lw_thread_s {
     lw_int32_t     *lw_thread_errno_ptr;
     lw_sync_log_t  *lw_thread_sync_log;
 };
+
+
+lw_thread_t lw_thread_self(void)
+{
+    return NULL;
+}

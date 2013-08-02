@@ -10,7 +10,7 @@
 void lw_lock_init(void)
 {
     lw_atomic_init();
-    lw_waiter_init_global();
+    lw_waiter_domain_init_global();
     lw_cycles_init();
     lw_lock_stats_global_init();
     lw_sync_log_init();
@@ -19,7 +19,7 @@ void lw_lock_init(void)
 void lw_lock_shutdown(void)
 {
     lw_atomic_destroy();
-    lw_waiter_shutdown_global();
+    lw_waiter_domain_shutdown_global();
     lw_sync_log_shutdown();
 }
 
