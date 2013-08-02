@@ -1,6 +1,15 @@
 #ifndef __LW_EVENT_H__
 #define __LW_EVENT_H__
 
+/*
+ *  Copyright(c) 2013 Data Domain, Inc.  All rights reserved.
+ *   
+ *  DATA DOMAIN CONFIDENTIAL -- This is an unpublished work of Data Domain, Inc.,
+ *  and is fully protected under copyright and trade secret laws.  You may not view,
+ *  use, disclose, copy, or distribute this file or any information herein except
+ *  pursuant to a valid written license from Data Domain.
+ */     
+
 #include "lw_types.h"
 #include "lw_dlist.h"
 #include "lw_magic.h"
