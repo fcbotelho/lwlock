@@ -19,14 +19,14 @@ lw_cycles_init(void)
         ret = gettimeofday(&tv_start, NULL);
         lw_verify(ret == 0);
 
-        t_start = rdtsc();
+        t_start = lw_rdtsc();
 
         lw_sleep(1);
 
         ret = gettimeofday(&tv_stop, NULL);
         lw_verify(ret == 0);
 
-        t_stop = rdtsc();
+        t_stop = lw_rdtsc();
 
         usec_elapsed = (1000ULL * 1000 * tv_stop.tv_sec) + tv_stop.tv_usec;
         usec_elapsed -= (1000ULL * 1000 * tv_start.tv_sec) + tv_start.tv_usec;

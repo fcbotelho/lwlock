@@ -47,7 +47,7 @@ pthread_mutex_t lw_waiter_global_domain_lock;
  * Allocate one array of lw_waiter_t structures.
  */
 static void
-lw_waiter_global_domain_alloc_one_array(lw_waiter_global_domain_t *gd)
+lw_waiter_global_domain_alloc_one_array(LW_INOUT lw_waiter_global_domain_t *gd)
 {
     lw_uint32_t i;
     lw_waiter_t *waiters_row;
@@ -117,7 +117,7 @@ lw_waiter_domain_init_global(void)
  * Free all the lw_waiter_t structures.
  */
 static void
-lw_waiter_dealloc_all(lw_waiter_global_domain_t *gd)
+lw_waiter_dealloc_all(LW_INOUT lw_waiter_global_domain_t *gd)
 {
     lw_uint32_t i;
     lw_waiter_t *waiter;
@@ -179,7 +179,7 @@ lw_waiter_domain_shutdown_global(void)
 }
 
 lw_waiter_t *
-lw_waiter_domain_alloc_global(lw_waiter_domain_t *domain)
+lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain)
 {
     lw_waiter_t *waiter;
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
@@ -208,7 +208,8 @@ lw_waiter_domain_alloc_global(lw_waiter_domain_t *domain)
 }
 
 void
-lw_waiter_domain_free_global(lw_waiter_domain_t *domain, lw_waiter_t *waiter)
+lw_waiter_domain_free_global(LW_INOUT lw_waiter_domain_t *domain, 
+                             LW_INOUT lw_waiter_t *waiter)
 {
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
     pthread_mutex_lock(&lw_waiter_global_domain_lock);
@@ -227,7 +228,7 @@ lw_waiter_domain_free_global(lw_waiter_domain_t *domain, lw_waiter_t *waiter)
 }
 
 static lw_waiter_t *
-lw_waiter_domain_get_global(lw_waiter_domain_t *domain)
+lw_waiter_domain_get_global(LW_INOUT lw_waiter_domain_t *domain)
 {
     lw_waiter_t *waiter;
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
@@ -242,8 +243,8 @@ lw_waiter_domain_get_global(lw_waiter_domain_t *domain)
 }
 
 static lw_waiter_t *
-lw_waiter_domain_from_id_global(lw_waiter_domain_t *domain, 
-                                lw_uint32_t id)
+lw_waiter_domain_from_id_global(LW_INOUT lw_waiter_domain_t *domain, 
+                                LW_IN lw_uint32_t id)
 {
     lw_waiter_t *waiter;
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
@@ -257,4 +258,25 @@ lw_waiter_domain_from_id_global(lw_waiter_domain_t *domain,
     waiter = &(gd->lw_wgd_waiters[id/LW_WAITERS_PER_ARRAY][id % LW_WAITERS_PER_ARRAY]);
     lw_assert(waiter->lw_waiter_domain == domain);
     return waiter;
+}
+
+void
+lw_waiter_remove_from_id_list(LW_INOUT lw_waiter_t *waiter)
+{
+    lw_waiter_t *prev;
+    lw_waiter_t *next;
+
+    next = lw_waiter_from_id(waiter->lw_waiter_next);
+    prev = lw_waiter_from_id(waiter->lw_waiter_prev);
+    
+    if (next != NULL) {
+        lw_assert(next->lw_waiter_prev == waiter->lw_waiter_id);
+        next->lw_waiter_prev = waiter->lw_waiter_prev;
+    }
+    if (prev != NULL) {
+        lw_assert(prev->lw_waiter_next == waiter->lw_waiter_id);
+        prev->lw_waiter_next = waiter->lw_waiter_next;
+    }
+    waiter->lw_waiter_next = waiter->lw_waiter_prev = LW_WAITER_ID_MAX;
+    waiter->lw_waiter_event.lw_te_base.lw_be_tag = 0;
 }

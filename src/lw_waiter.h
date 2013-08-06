@@ -60,7 +60,7 @@ lw_waiter_alloc(void)
 }
 
 static inline void 
-lw_waiter_free(void *arg)
+lw_waiter_free(LW_INOUT void *arg)
 {
     lw_waiter_t *waiter = arg;
     waiter->lw_waiter_domain->lw_wd_free_waiter(waiter->lw_waiter_domain, 

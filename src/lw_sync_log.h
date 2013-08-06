@@ -32,32 +32,32 @@ typedef enum {
 
 typedef struct {
     /* NULL if no name associated with primitive */
-    const char *lw_sync_logline_name;
+    const char *lw_sll_name;
 
     /* Pointer to mutex/condvar/counter etc */
-    const void *lw_sync_logline_lock_ptr;
+    const void *lw_sll_lock_ptr;
 
     /* Start tsc of event recorded. */
-    lw_uint64_t lw_sync_logline_start_tsc;
+    lw_uint64_t lw_sll_start_tsc;
 
     /* End tsc */
-    lw_uint64_t lw_sync_logline_end_tsc;
+    lw_uint64_t lw_sll_end_tsc;
 
     /* Type of event: lock/unlock etc. */
-    lw_sync_event_type_t lw_sync_logline_event_id;
+    lw_sync_event_type_t lw_sll_event_id;
 
     /* type of primitive being acquired. */
-    lw_sync_type_t lw_sync_logline_primitive_type;
+    lw_sync_type_t lw_sll_primitive_type;
 
     /* Pid of current owner. 0 if pid can't be determined. */
-    lw_uint32_t lw_sync_logline_pid_of_contending_owner;
+    lw_uint32_t lw_sll_pid_of_contending_owner;
 
     /* Tid of current owner. NULL if it can't be determined */
-    lw_thread_t lw_sync_logline_tid_of_contending_owner;
+    lw_thread_t lw_sll_tid_of_contending_owner;
 
     /* Any sync event specific data to keep */
-    lw_uint64_t lw_sync_logline_specific_data[4];
-} lw_sync_logline_t;
+    lw_uint64_t lw_sll_specific_data[4];
+} lw_sync_log_line_t;
 
 #define LW_MAX_SYNC_LOGLINES    (4096)
 
@@ -66,7 +66,7 @@ typedef struct {
 typedef struct {
     lw_magic_t lw_sync_log_magic;
     lw_uint32_t lw_sync_log_next_line;
-    lw_sync_logline_t lw_sync_log_lines[LW_MAX_SYNC_LOGLINES];
+    lw_sync_log_line_t lw_sync_log_lines[LW_MAX_SYNC_LOGLINES];
 } lw_sync_log_t;
 
 /* Functions to init/shutdown the entire sync log API */
@@ -86,7 +86,7 @@ lw_sync_log_unregister(void);
 extern lw_sync_log_t *
 lw_sync_log_get(void);
 
-extern lw_sync_logline_t *
-lw_next_sync_log_line(void);
+extern lw_sync_log_line_t *
+lw_sync_log_next_line(void);
 
 #endif

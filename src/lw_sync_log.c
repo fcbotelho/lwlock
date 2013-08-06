@@ -56,8 +56,8 @@ lw_sync_log_get(void)
 }
 
 
-lw_sync_logline_t *
-lw_next_sync_log_line(void)
+lw_sync_log_line_t *
+lw_sync_log_nex_line(void)
 {
     lw_uint32_t idx;
     lw_sync_log_t *lw_sync_log = lw_sync_log_get();

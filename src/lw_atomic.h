@@ -144,7 +144,7 @@ static inline lw_uint32_t __attribute__ ((always_inline))
 lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var, 
                     LW_IN lw_uint32_t increment)
 {
-    dd_assert(((uintptr_t)var) % sizeof(*var) == 0);
+    lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
     asm volatile("lock; xaddl %0, %1"
                  : "=q"(increment)
                  : "m"(*var),
@@ -169,7 +169,7 @@ lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var,
 static inline lw_uint64_t __attribute__ ((always_inline))
 lw_uint64_lock_xadd(volatile lw_uint64_t *var, lw_uint64_t increment)
 {
-    dd_assert(((uintptr_t)var) % sizeof(*var) == 0);
+    lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
     asm volatile("lock; xaddq %0, %1"
                  : "=q"(increment)
                  : "m"(*var),
@@ -351,6 +351,42 @@ lw_uint64_lock_xadd(LW_INOUT volatile lw_uint64_t *var,
 
 
 
+
+/*
+ * Alternative interface to lw_uint32_cmpxchg/lw_uint64_cmpxchg 
+ * which returns a bool to indicate if the swap occured. On failure, 
+ * updates the old value.
+ */
+static inline lw_bool_t __attribute__ ((always_inline))
+lw_uint64_swap(LW_INOUT lw_uint64_t volatile *var,
+               LW_INOUT lw_uint64_t volatile *old,
+               LW_IN lw_uint64_t new)
+{   
+    lw_uint64_t curval;
+    lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
+    curval = lw_uint64_cmpxchg(var, *old, new);
+    if (curval == *old) {
+        return TRUE;
+    }
+    *old = curval;
+    return FALSE;
+}
+
+static inline lw_bool_t __attribute__ ((always_inline))
+lw_uint32_swap(LW_INOUT lw_uint32_t volatile *var,
+               LW_INOUT lw_uint32_t volatile *old,
+               LW_IN lw_uint32_t new)
+{     
+    lw_uint32_t curval;
+    lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
+    curval = lw_uint32_cmpxchg(var, *old, new);
+    if (curval == *old) {
+        return TRUE;
+    }   
+    *old = curval;
+    return FALSE;
+} 
+
 /* Define other atomic sub/dec/inc using above *_add and *_xadd above */
 
 #define lw_uint32_lock_sub(var, sub)    lw_uint32_lock_add(var, (lw_uint32_t)(-(sub)))
@@ -440,7 +476,7 @@ lw_atomic32_inc(LW_INOUT lw_atomic32_t *atomic)
 static inline lw_uint32_t __attribute__ ((always_inline))
 lw_atomic32_inc_with_ret(LW_INOUT lw_atomic32_t *atomic)
 {
-    // dd_uint32_lock_xinc returns old value
+    // lw_uint32_lock_xinc returns old value
     return (lw_uint32_lock_xinc(&atomic->val) + 1); 
 }
 

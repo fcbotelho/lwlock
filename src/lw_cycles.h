@@ -31,7 +31,7 @@ lw_rdtsc(void)
  */
 #define LW_TSC_DIFF(end, start) \
     ((end) - (start) <= (LW_MAX_UINT64 >> 1)) ? ((end) - (start)) : 0
-#define LW_TSC_DIFF_NOW(start) LW_TSC_DIFF(rdtsc(), (start))
+#define LW_TSC_DIFF_NOW(start) LW_TSC_DIFF(lw_rdtsc(), (start))
 
 extern lw_uint32_t lw_cpu_khz;
 void lw_cycles_init(void);
