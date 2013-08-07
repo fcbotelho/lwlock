@@ -225,3 +225,25 @@ lw_mutex_unlock(LW_INOUT lw_mutex_t *lw_mutex,
         }
     }
 }
+
+
+
+#ifdef LW_DEBUG
+void
+lw_mutex_assert_locked(lw_mutex_t *lw_mutex)
+{
+    lw_waiter_t *waiter;
+    waiter = lw_waiter_get();
+    lw_assert(lw_mutex->lw_mutex_owner == waiter->lw_waiter_id);
+}
+
+void
+lw_mutex_assert_not_locked(lw_mutex_t *lw_mutex)
+{
+    lw_waiter_t *waiter;
+    waiter = lw_waiter_get();
+    lw_assert(lw_mutex->lw_mutex_owner != waiter->lw_waiter_id);
+}
+#endif
+
+

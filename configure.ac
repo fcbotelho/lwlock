@@ -26,7 +26,7 @@ LDFLAGS="$ac_cv_sys_largefile_LDFLAGS $LDFLAGS"
 LIBS="$LIBS $ac_cv_sys_largefile_LIBS"
 
 dnl Checks for headers
-AC_CHECK_HEADERS([getopt.h math.h])
+AC_CHECK_HEADERS([getopt.h math.h pthread.h])
 
 dnl Checks for libraries.
 LT_LIB_M  
@@ -57,6 +57,33 @@ else
 		fi
 		;;
 	esac
+fi
+
+#
+# Define these preprocessor variables:
+#     LW_HAVE_THREADS
+#     HAVE_PTHREAD_SETSPECIFIC
+#     HAVE_PTHREAD_KEY_CREATE
+#
+AC_ARG_ENABLE(threads, 
+              [  --enable-threads        enable POSIX multithreading support],
+              [case $enable_threads in 
+               yes) AC_MSG_NOTICE([enabled POSIX multithreading support])
+               AC_CHECK_FUNCS(pthread_setspecific)
+               AC_CHECK_FUNCS(pthread_key_create)
+               AX_PTHREAD([AC_DEFINE(LW_HAVE_PTHREAD)[, AC_MSG_ERROR([pthread library is required])]])
+               ;;
+           no)  AC_MSG_NOTICE([POSIX multithreading support disabled])
+           ;;
+       *)   echo "Ignoring unknown argument to --disable-threads: $enable_threads"
+           ;;
+   esac])
+
+
+# Check for incompatible optional features
+#
+if test x"$enable_threads" = xyes; then
+    AC_MSG_NOTICE(pthread library support has been enabled)
 fi
 
 dnl Handle --disable-asm, --enable-asm=x86, --enable-asm=amd64

@@ -2,8 +2,8 @@
 #define __LW_MUTEX_H__
 
 #include "lw_types.h"
-#include "lw_waiter.h"
 #include "lw_lock_stats.h"
+
 
 /*
  * Lightweight mutex.
@@ -69,20 +69,11 @@ void lw_mutex_unlock(lw_mutex_t *lw_mutex);
 
 
 #ifdef LW_DEBUG
-static inline void
-lw_mutex_assert_locked(lw_mutex_t *lw_mutex)
-{
-    lw_waiter_t *waiter;
-    waiter = lw_waiter_get();
-    lw_assert(lw_mutex->lw_mutex_owner == waiter->lw_waiter_id);
-}
-static inline void
-lw_mutex_assert_not_locked(lw_mutex_t *lw_mutex)
-{
-    lw_waiter_t *waiter;
-    waiter = lw_waiter_get();
-    lw_assert(lw_mutex->lw_mutex_owner != waiter->lw_waiter_id);
-}
+extern void
+lw_mutex_assert_locked(lw_mutex_t *lw_mutex);
+
+extern void
+lw_mutex_assert_not_locked(lw_mutex_t *lw_mutex);
 #else
 #define lw_mutex_assert_locked(lwm)      LW_UNUSED_PARAMETER(lwm) /* Do Nothing */
 #define lw_mutex_assert_not_locked(lwm)  LW_UNUSED_PARAMETER(lwm) /* Do Nothing */

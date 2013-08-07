@@ -1,7 +1,6 @@
 #ifndef __LW_SYNC_LOG_H__
 #define __LW_SYNC_LOG_H__
 
-#include "lw_magic.h"
 #include "lw_thread.h"
 
 typedef enum {
@@ -59,15 +58,7 @@ typedef struct {
     lw_uint64_t lw_sll_specific_data[4];
 } lw_sync_log_line_t;
 
-#define LW_MAX_SYNC_LOGLINES    (4096)
-
-#define  LW_SYNC_LOG_MAGIC   LW_MAGIC(0x5106)
-
-typedef struct {
-    lw_magic_t lw_sync_log_magic;
-    lw_uint32_t lw_sync_log_next_line;
-    lw_sync_log_line_t lw_sync_log_lines[LW_MAX_SYNC_LOGLINES];
-} lw_sync_log_t;
+typedef struct lw_sync_log_s lw_sync_log_t;
 
 /* Functions to init/shutdown the entire sync log API */
 extern void

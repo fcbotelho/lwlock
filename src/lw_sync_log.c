@@ -1,4 +1,15 @@
 #include "lw_sync_log.h"
+#include "lw_magic.h"
+
+#define LW_MAX_SYNC_LOGLINES    (4096)
+#define  LW_SYNC_LOG_MAGIC   LW_MAGIC(0x5106)
+
+struct lw_sync_log_s {
+    lw_magic_t lw_sync_log_magic;
+    lw_uint32_t lw_sync_log_next_line;
+    lw_sync_log_line_t lw_sync_log_lines[LW_MAX_SYNC_LOGLINES];
+};
+
 
 /* Pthread key to keep track of thread-specific lw_sync_log_t pointer */
 pthread_key_t lw_sync_log_key;
