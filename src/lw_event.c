@@ -1,4 +1,5 @@
 #include "lw_event.h"
+#include "lw_debug.h"
 #include <pthread.h>
 #include <errno.h>
 
@@ -55,8 +56,10 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
                      LW_IN struct timespec *abstime)
 {
     int ret = 0;
-    lw_thread_event_t *event = DD_EVENT_2_THREAD_EVENT(_event);
+    lw_thread_event_t *event = LW_EVENT_2_THREAD_EVENT(_event);
+#ifdef LW_DEBUG
     lw_assert(event->lw_te_tid == lw_thread_self());
+#endif
     lw_assert(lw_thread_event_signal ==
               event->lw_te_base.lw_be_iface.lw_ei_signal);
     void *src = event->lw_te_base.lw_be_wait_src;
@@ -73,7 +76,7 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
             ret = pthread_cond_timedwait(&event->lw_te_cond, 
                                          &event->lw_te_mutex, 
                                          abstime);
-            dd_verify(ret == 0 || ret == EINTR || ret == ETIMEDOUT);
+            lw_verify(ret == 0 || ret == EINTR || ret == ETIMEDOUT);
             if (event->lw_te_signal_pending) {
                 /* Woken up by actual signal or timeout. But regardless,
                  * we have received a signal.
@@ -113,7 +116,7 @@ lw_thread_event_init(LW_INOUT lw_thread_event_t *thread_event)
 
 //     #define CLOCK_MONOTONIC 1
 //     ret = pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
-//     dd_verify(ret == 0);
+//     lw_verify(ret == 0);
 // 
     ret = pthread_cond_init(&thread_event->lw_te_cond, &cond_attr);
     lw_verify(ret == 0);

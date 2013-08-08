@@ -1,5 +1,7 @@
 #include "lw_sync_log.h"
 #include "lw_magic.h"
+#include "lw_debug.h"
+#include <stdlib.h>
 
 #define LW_MAX_SYNC_LOGLINES    (4096)
 #define  LW_SYNC_LOG_MAGIC   LW_MAGIC(0x5106)
@@ -68,7 +70,7 @@ lw_sync_log_get(void)
 
 
 lw_sync_log_line_t *
-lw_sync_log_nex_line(void)
+lw_sync_log_next_line(void)
 {
     lw_uint32_t idx;
     lw_sync_log_t *lw_sync_log = lw_sync_log_get();
@@ -86,6 +88,6 @@ lw_sync_log_nex_line(void)
         lw_sync_log->lw_sync_log_next_line = 0;
     }
     lw_assert(idx < LW_MAX_SYNC_LOGLINES);
-    return lw_sync_log->lw_sync_log_lines[idx];
+    return &lw_sync_log->lw_sync_log_lines[idx];
 
 }

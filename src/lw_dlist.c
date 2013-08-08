@@ -1,4 +1,5 @@
 #include "lw_dlist.h"
+#include "lw_debug.h"
 
 void lw_dl_init(LW_INOUT lw_dlist_t *list)
 {
@@ -62,8 +63,10 @@ void *lw_dl_dequeue(LW_INOUT lw_dlist_t *list)
     elem = list->lw_dlist_head;
 
     if (elem != NULL) {
+#ifdef LW_DEBUG
         lw_assert((elem->lw_delem_magic == LW_DL_ON_LIST) && 
                   (elem->lw_delem_list == list));
+#endif
         lw_assert(elem->lw_delem_prev == NULL);
 
         n = elem->lw_delem_next;

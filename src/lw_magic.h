@@ -29,7 +29,7 @@
  * in 16 bits.  We then right-shift the value 48 bits to obtain the
  * desired 16-bit value.
  */
-#define _LW_VERIFY_HEX16(_n) ((dd_uint32_t) ((_n ## ffffffffffffULL) >> 48))
+#define _LW_VERIFY_HEX16(_n) ((lw_uint32_t) ((_n ## ffffffffffffULL) >> 48))
 
 /*
  * The result of LW_MAGIC() is a 32-bit value whose upper 16 bits are

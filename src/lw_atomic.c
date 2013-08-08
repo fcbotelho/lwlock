@@ -1,6 +1,8 @@
 #include "lw_atomic.h"
+#include "lw_debug.h"
+#include <pthread.h>
 
-#if !defined(AMD64_ASM)
+#ifndef AMD64_ASM
 
 pthread_mutex_t lw_atomic_mutex;
 
@@ -20,12 +22,12 @@ lw_uint32_t lw_uint32_cmpxchg(LW_INOUT volatile lw_uint32_t *var,
 {
     lw_uint32_t ret;
 
-    lw_panic_if(pthread_mutex_lock(&lw_atomic_mutex) != 0);
+    lw_verify(pthread_mutex_lock(&lw_atomic_mutex) == 0);
     ret = *var;
     if (*var == old) {
         *var = new;
     }
-    lw_panic_if(pthread_mutex_unlock(&lw_atomic_mutex) != 0);
+    lw_verify(pthread_mutex_unlock(&lw_atomic_mutex) == 0);
 
     return ret;
 }
@@ -36,17 +38,16 @@ lw_uint64_t lw_uint64_cmpxchg(LW_INOUT volatile lw_uint64_t *var,
 {
     lw_uint64_t ret;
 
-    lw_panic_if(pthread_mutex_lock(&lw_atomic_mutex) != 0);
+    lw_verify(pthread_mutex_lock(&lw_atomic_mutex) == 0);
     ret = *var;
     if (*var == old) {
         *var = new;
     }
-    lw_panic_if(pthread_mutex_unlock(&lw_atomic_mutex) != 0);
+    lw_verify(pthread_mutex_unlock(&lw_atomic_mutex) == 0);
 
     return ret;
 }
 
 #endif
-
 
 

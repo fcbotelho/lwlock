@@ -1,4 +1,5 @@
 #include "lw_cycles.h"
+#include "lw_debug.h"
 #include <unistd.h>
 
 lw_uint32_t lw_cpu_khz;
@@ -21,7 +22,7 @@ lw_cycles_init(void)
 
         t_start = lw_rdtsc();
 
-        lw_sleep(1);
+        sleep(1);
 
         ret = gettimeofday(&tv_stop, NULL);
         lw_verify(ret == 0);

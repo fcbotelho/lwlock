@@ -32,4 +32,5 @@ liblwlock_la_SOURCES =  lw_lock.h \
 						lw_waiter.c
 
 liblwlock_la_LDFLAGS = -version-info 0:0:0
-
+liblwlock_la_LIBADD  = $(PTHREAD_LIBS)
+AM_LDFLAGS = $(PTHREAD_CFLAGS)

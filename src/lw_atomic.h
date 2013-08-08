@@ -2,7 +2,7 @@
 #define __LW_ATOMIC_H__
 
 #include "lw_types.h"
-
+#include <stdint.h>
 #if (defined(AMD64_ASM))  // support for AMD 64 bit assembly
 
 /*
@@ -385,7 +385,7 @@ lw_uint32_swap(LW_INOUT lw_uint32_t volatile *var,
     }   
     *old = curval;
     return FALSE;
-} 
+}
 
 /* Define other atomic sub/dec/inc using above *_add and *_xadd above */
 
@@ -786,3 +786,4 @@ lw_atomic64_sub_with_ret(lw_atomic64_t *atomic, lw_uint64_t i)
     return lw_uint64_lock_xsub(&atomic->val, i) - i;
 }
 
+#endif

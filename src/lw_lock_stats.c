@@ -7,8 +7,8 @@
 lw_lock_stats_t lw_lock_global_stats;
 
 void
-lw_lock_stats_init(INOUT lw_lock_stats_t *lw_lock_stats,
-                   IN char *name)
+lw_lock_stats_init(LW_INOUT lw_lock_stats_t *lw_lock_stats,
+                   LW_IN char *name)
 {
     lw_lock_stats->lw_ls_trace_history = TRUE;
     lw_lock_stats->lw_ls_name = name;
@@ -16,7 +16,7 @@ lw_lock_stats_init(INOUT lw_lock_stats_t *lw_lock_stats,
 }
 
 lw_bool_t
-lw_lock_stats_indicate_contention(IN lw_lock_stats_t *lw_lock_stats)
+lw_lock_stats_indicate_contention(LW_IN lw_lock_stats_t *lw_lock_stats)
 {
     lw_uint64_t lc = lw_atomic32_read(&lw_lock_stats->lw_ls_lock_contentions);
     lw_uint64_t lct = lw_atomic64_read(&lw_lock_stats->lw_ls_lock_contention_cyc);
@@ -26,7 +26,7 @@ lw_lock_stats_indicate_contention(IN lw_lock_stats_t *lw_lock_stats)
 }
 
 void
-lw_lock_stats_reset(INOUT lw_lock_stats_t *lw_lock_stats)
+lw_lock_stats_reset(LW_INOUT lw_lock_stats_t *lw_lock_stats)
 {
     lw_atomic32_set(&lw_lock_stats->lw_ls_lock_contentions, 0);
     lw_atomic32_set(&lw_lock_stats->lw_ls_unlock_contentions, 0);
@@ -35,9 +35,9 @@ lw_lock_stats_reset(INOUT lw_lock_stats_t *lw_lock_stats)
 }
 
 void
-lw_lock_stats_str(IN lw_lock_stats_t *lw_lock_stats,
-                  char *buf,
-                  size_t size)
+lw_lock_stats_str(LW_IN lw_lock_stats_t *lw_lock_stats,
+                  LW_OUT char *buf,
+                  LW_IN size_t size)
 {
     lw_uint64_t lc = lw_atomic32_read(&lw_lock_stats->lw_ls_lock_contentions);
     lw_uint64_t lct = lw_atomic64_read(&lw_lock_stats->lw_ls_lock_contention_cyc);
@@ -47,9 +47,15 @@ lw_lock_stats_str(IN lw_lock_stats_t *lw_lock_stats,
     lct = lct / lw_cpu_khz;
     uct = uct / lw_cpu_khz;
 
-    snprintf(buf, size, "%10llu(%6llu.%03llu sec) %10llu(%6llu.%03llu sec)\n",
-             lc, lct / 1000, lct % 1000,
-             uc, uct / 1000, uct % 1000);
+    snprintf(buf, 
+             size, 
+             "%10llu(%6llu.%03llu sec) %10llu(%6lu.%03llu sec)\n",
+             lc, 
+             lct / 1000, 
+             lct % 1000,
+             uc, 
+             uct / 1000, 
+             uct % 1000);
 }
 
 void

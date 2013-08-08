@@ -2,7 +2,9 @@
 #define __LW_CYCLES_H__
 
 #include "lw_types.h"
+#include "lw_debug.h"
 #include <time.h>
+#include <sys/time.h>
 
 static inline lw_uint64_t
 lw_rdtsc(void)

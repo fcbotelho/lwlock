@@ -84,7 +84,7 @@ static inline void
 lw_waiter_wait(LW_INOUT lw_waiter_t *waiter)
 {
     lw_event_wait(&waiter->lw_waiter_event, 
-                  waite->lw_waiter_event.lw_te_base.lw_be_wait_src);
+                  waiter->lw_waiter_event.lw_te_base.lw_be_wait_src);
 }
 
 static inline int

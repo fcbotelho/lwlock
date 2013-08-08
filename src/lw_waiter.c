@@ -1,5 +1,6 @@
 #include "lw_waiter.h"
 #include "lw_dlist.h"
+#include "lw_debug.h"
 #include <pthread.h>
 
 static lw_waiter_t *
@@ -81,7 +82,7 @@ void
 lw_waiter_domain_init_global(void)
 {
     lw_uint32_t i;
-    lw_verify(sizeof(lw_lock_t) == sizeof(lw_uint32_t));
+//     lw_verify(sizeof(lw_rwlock_t) == sizeof(lw_uint32_t));
 
     pthread_mutex_init(&lw_waiter_global_domain_lock, NULL);
 

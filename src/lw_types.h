@@ -27,12 +27,12 @@ typedef lw_uint32_t lw_bool_t;
   /** \typedef long lw_int64_t;
    *  \brief 64-bit integer for a 64-bit achitecture.
    */
-  typedef long lw_int64_t;
+  typedef long long lw_int64_t;
 
   /** \typedef unsigned long lw_uint64_t;
    *  \brief Unsigned 64-bit integer for a 64-bit achitecture.
    */
-  typedef unsigned long lw_uint64_t;
+  typedef unsigned long long lw_uint64_t;
 #else
   /** \typedef long long lw_int64_t;
    *  \brief 64-bit integer for a 32-bit achitecture.

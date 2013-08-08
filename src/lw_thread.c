@@ -1,5 +1,6 @@
 #include "lw_thread.h"
 #include "lw_sync_log.h"
+#include "lw_waiter.h"
 #include <pthread.h>
 
 struct lw_thread_s {

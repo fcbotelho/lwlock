@@ -54,12 +54,13 @@ static void lw_dummyprintf(const char *format, ...)
 
 #ifdef LW_DEBUG
 #include <assert.h>
-#define lw_assert assert
+#define lw_assert(arg) assert(arg)
 #else
-#define lw_assert
+#define lw_assert(arg) LW_UNUSED_PARAMETER(arg)
 #endif
 
 #include "lw_compiler.h"
+#include <stdlib.h>
 #define lw_verify(_x) \
     do { \
         if (lw_predict_likely(_x)) { \

@@ -2,7 +2,8 @@
 #define __LW_SYNC_LOG_H__
 
 #include "lw_thread.h"
-
+#include "lw_types.h"
+#include <pthread.h>
 typedef enum {
     LW_SYNC_TYPE_UNKNOWN      = 0,
     LW_SYNC_TYPE_LWMUTEX      = 1,

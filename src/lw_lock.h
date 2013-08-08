@@ -24,8 +24,8 @@ lw_lock_init(void);
 extern void 
 lw_lock_shutdown(void);
 
+#include "lw_sync_log.h"
 #include "lw_mutex.h"
 #include "lw_lock_stats.h"
-#include "lw_sync_log.h"
 #include "lw_thread.h"
 #endif /* __LW_LOCK_H__ */

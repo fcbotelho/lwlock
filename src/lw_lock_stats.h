@@ -2,6 +2,7 @@
 #define __LW_LOCK_STATS_H__
 
 #include "lw_types.h"
+#include <stddef.h>
 
 typedef struct lw_lock_stats_s {
     lw_bool_t lw_ls_trace_history; /* whether or not to use sync log */
@@ -23,8 +24,8 @@ extern void
 lw_lock_stats_reset(LW_INOUT lw_lock_stats_t *lw_lock_stats);
 
 extern void
-lw_lock_stats_str(LW_INOUT lw_lock_stats_t *lw_lock_stats,
-                  LW_INOUT char *buf,
+lw_lock_stats_str(LW_IN lw_lock_stats_t *lw_lock_stats,
+                  LW_OUT char *buf,
                   LW_IN size_t size);
 
 extern void

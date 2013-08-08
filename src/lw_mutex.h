@@ -27,19 +27,11 @@ typedef union lw_mutex_u {
 
 #define LW_MUTEX_INITIALIZER  { .lw_mutex_ow = { LW_WAITER_ID_MAX, LW_WAITER_ID_MAX} }
 
-static inline void
-lw_mutex_init(LW_INOUT lw_mutex_t *lw_mutex)
-{
-    lw_mutex->lw_mutex_owner = LW_WAITER_ID_MAX;
-    lw_mutex->lw_mutex_waitq = LW_WAITER_ID_MAX;
-}
+extern void
+lw_mutex_init(LW_INOUT lw_mutex_t *lw_mutex);
 
-static inline void
-lw_mutex_destroy(LW_INOUT lw_mutex_t *lw_mutex)
-{
-    lw_verify(lw_mutex->lw_mutex_owner == LW_WAITER_ID_MAX);
-    lw_verify(lw_mutex->lw_mutex_waitq == LW_WAITER_ID_MAX);
-}
+extern void
+lw_mutex_destroy(LW_INOUT lw_mutex_t *lw_mutex);
 
 extern lw_int32_t
 lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex);
@@ -65,7 +57,8 @@ lw_mutex_unlock_if_held(LW_INOUT lw_mutex_t *lw_mutex);
  * Unlock an lw_mutex. If there is a waiter, hand over the lock to the oldest
  * waiter.
  */
-void lw_mutex_unlock(lw_mutex_t *lw_mutex);
+void lw_mutex_unlock(LW_INOUT lw_mutex_t *lw_mutex,
+                     LW_IN lw_bool_t trace);
 
 
 #ifdef LW_DEBUG

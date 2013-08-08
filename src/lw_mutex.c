@@ -1,5 +1,25 @@
 #include "lw_mutex.h"
 #include "lw_waiter_intern.h"
+#include "lw_sync_log.h"
+#include "lw_debug.h"
+#include "lw_atomic.h"
+#include "lw_cycles.h"
+#include <errno.h>
+
+void
+lw_mutex_init(LW_INOUT lw_mutex_t *lw_mutex)
+{
+    lw_mutex->lw_mutex_owner = LW_WAITER_ID_MAX;
+    lw_mutex->lw_mutex_waitq = LW_WAITER_ID_MAX;
+}
+
+void
+lw_mutex_destroy(LW_INOUT lw_mutex_t *lw_mutex)
+{
+    lw_verify(lw_mutex->lw_mutex_owner == LW_WAITER_ID_MAX);
+    lw_verify(lw_mutex->lw_mutex_waitq == LW_WAITER_ID_MAX);
+}
+
 lw_int32_t
 lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex)
 {
@@ -21,7 +41,7 @@ lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex)
 
     lw_mutex_old_val = lw_uint32_cmpxchg(&lw_mutex->lw_mutex_val, 
                                           old.lw_mutex_val, 
-                                          new.lw_mutex_val)
+                                          new.lw_mutex_val);
 
     got_lock = (lw_mutex_old_val == old.lw_mutex_val);
     lw_assert(!got_lock || lw_mutex->lw_mutex_owner == waiter->lw_waiter_id);
@@ -152,7 +172,7 @@ lw_mutex_setup_prev_id_pointers(LW_INOUT lw_mutex_t *lw_mutex,
         return;
     }
 
-    lw_assert(_id < LW_WAITER_ID_MAX);
+    lw_assert(waiter_id < LW_WAITER_ID_MAX);
     waiter = lw_waiter_from_id(waiter_id);
     lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == lw_mutex);
     while (waiter->lw_waiter_next != LW_WAITER_ID_MAX) {
@@ -215,6 +235,7 @@ lw_mutex_unlock(LW_INOUT lw_mutex_t *lw_mutex,
          * lw_sync_log_register once for this thread.
          */
         lw_sync_log_line_t *line = lw_sync_log_next_line();
+
         if (line != NULL) {
             line->lw_sll_name = NULL;
             line->lw_sll_lock_ptr = lw_mutex;

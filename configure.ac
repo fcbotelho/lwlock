@@ -61,33 +61,35 @@ else
 	esac
 fi
 
+AC_CHECK_LIB(pthread, pthread_create, [PTHREAD_LIBS+=-lpthread])
+
 #
 # Define these preprocessor variables:
 #     LW_HAVE_THREADS
 #     HAVE_PTHREAD_SETSPECIFIC
 #     HAVE_PTHREAD_KEY_CREATE
 #
-AC_ARG_ENABLE(threads, 
-              [  --enable-threads        enable POSIX multithreading support],
-              [case $enable_threads in 
-               yes) AC_MSG_NOTICE([enabled POSIX multithreading support])
-               AC_CHECK_FUNCS(pthread_setspecific)
-               AC_CHECK_FUNCS(pthread_key_create)
-               ACX_PTHREAD([AC_DEFINE([LW_HAVE_PTHREAD], [], [defining LW_HAVE_PTHREAD])],
-                           [AC_MSG_ERROR([POSIX multithreading support disabled])])
-               , AC_MSG_ERROR("pthread library not supported"))
-               ;;
-           no)  AC_MSG_NOTICE([POSIX multithreading support disabled])
-           ;;
-       *)   echo "Ignoring unknown argument to --disable-threads: $enable_threads"
-           ;;
-   esac])
 
+dnl Handle --disable-threads, --enable-threads=yes, --enable-threads=no
+AC_ARG_ENABLE([threads], 
+	          [AS_HELP_STRING([--disable-threads],[disable POSIX multithreading support])],
+              [x_enable_threads=$enableval], [x_enable_threads=yes])
 
 # Check for incompatible optional features
 #
-if test x"$enable_threads" = xyes; then
+if test "$x_enable_threads" = yes; then
+    AC_CHECK_FUNCS(pthread_setspecific)
+    AC_CHECK_FUNCS(pthread_key_create)
+    ACX_PTHREAD([AC_DEFINE([LW_HAVE_PTHREAD], [], [defining LW_HAVE_PTHREAD])],
+                [x_enable_threads=no])
+fi
+
+echo "x_enable_threads = $x_enable_threads, $PTHREAD_LIBS"
+
+if test "$x_enable_threads" = yes; then
     AC_MSG_NOTICE(pthread library support has been enabled)
+else
+    AC_MSG_ERROR([POSIX multithreading support disabled])
 fi
 
 dnl Handle --disable-asm, --enable-asm=x86, --enable-asm=amd64
@@ -121,7 +123,7 @@ if test "$x_enable_x86asm" = yes ; then
 elif test "$x_enable_amd64asm" = yes ; then
 	AC_DEFINE([AMD64_ASM], [1], [make use of amd64 asm optimization])
 else
-	# dont use any assembler code
+	AC_MSG_NOTICE([dont use any assembler code])
 fi
 
 # Unit tests based on the check library. Disabled by default.
