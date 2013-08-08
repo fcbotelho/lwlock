@@ -26,7 +26,7 @@ LDFLAGS="$ac_cv_sys_largefile_LDFLAGS $LDFLAGS"
 LIBS="$LIBS $ac_cv_sys_largefile_LIBS"
 
 dnl Checks for headers
-AC_CHECK_HEADERS([getopt.h math.h pthread.h])
+AC_CHECK_HEADERS([getopt.h math.h])
 
 dnl Checks for libraries.
 LT_LIB_M  
@@ -36,7 +36,9 @@ LDFLAGS="$LIBM $LDFLAGS"
 dnl Detect target arch type
 AC_ARG_VAR([SED_PROG], [sed utility])
 AC_CHECK_PROGS([SED_PROG],[sed])
-test -z "${SED_PROG}" && AC_MSG_ERROR([sed is required])
+
+test -z "${SED_PROG}" && AC_MSG_ERROR("sed is required")
+
 AC_MSG_CHECKING([output architecture])
 x_x86_target=no
 x_amd64_target=no
@@ -71,7 +73,9 @@ AC_ARG_ENABLE(threads,
                yes) AC_MSG_NOTICE([enabled POSIX multithreading support])
                AC_CHECK_FUNCS(pthread_setspecific)
                AC_CHECK_FUNCS(pthread_key_create)
-               AX_PTHREAD([AC_DEFINE(LW_HAVE_PTHREAD)[, AC_MSG_ERROR([pthread library is required])]])
+               ACX_PTHREAD([AC_DEFINE([LW_HAVE_PTHREAD], [], [defining LW_HAVE_PTHREAD])],
+                           [AC_MSG_ERROR([POSIX multithreading support disabled])])
+               , AC_MSG_ERROR("pthread library not supported"))
                ;;
            no)  AC_MSG_NOTICE([POSIX multithreading support disabled])
            ;;
@@ -113,9 +117,9 @@ AC_MSG_RESULT([${x_enable_amd64asm}])
 
 dnl Select x86 asm / amd64 asm / C-language sources
 if test "$x_enable_x86asm" = yes ; then
-	AC_DEFINE([X86_ASM], [1])
+	AC_DEFINE([X86_ASM], [1], [make use of x86 asm optimization])
 elif test "$x_enable_amd64asm" = yes ; then
-	AC_DEFINE([AMD64_ASM], [1])
+	AC_DEFINE([AMD64_ASM], [1], [make use of amd64 asm optimization])
 else
 	# dont use any assembler code
 fi
