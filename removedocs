@@ -1,4 +1,7 @@
 #!/bin/sh
+echo "rm ChangeLog"
+rm ChangeLog
+
 echo "rm *.html"
 rm *.html
 

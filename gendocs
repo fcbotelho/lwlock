@@ -1,4 +1,5 @@
 #!/bin/sh
+./gitlog-to-changelog.pl >& ChangeLog
 
 txt2tags -t html --mask-email -i README.t2t -o index.html
 txt2tags -t html -i FOOTER.t2t -o authors.html
