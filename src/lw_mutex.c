@@ -1,5 +1,6 @@
 #include "lw_mutex.h"
 #include "lw_waiter_intern.h"
+#include "lw_thread.h"
 #include "lw_sync_log.h"
 #include "lw_debug.h"
 #include "lw_atomic.h"
@@ -106,11 +107,14 @@ lw_mutex_lock(LW_INOUT lw_mutex_t *lw_mutex,
 
     if (lw_lock_stats->lw_ls_trace_history) {
         /*
-         * For this to work the caller has to have registered
-         * the synchronization log mechanism by calling 
-         * lw_sync_log_register once for this thread.
+         * For this to work the thread must be created using 
+         * the lw_thread APIs and the lw_thread API must be
+         * initialized with sync log feature on (that is
+         * call lw_thread_system_init() with TRUE). Otherwise,
+         * we will have a NULL returned from 
+         * lw_thread_sync_log_next_line()
          */
-        lw_sync_log_line_t *line = lw_sync_log_next_line();
+        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
         if (line != NULL) {
             line->lw_sll_name = lw_lock_stats->lw_ls_name;
             line->lw_sll_lock_ptr = lw_mutex;
@@ -230,12 +234,14 @@ lw_mutex_unlock(LW_INOUT lw_mutex_t *lw_mutex,
 
     if (trace) {
         /*
-         * For this to work the caller has to have registered
-         * the synchronization log mechanism by calling 
-         * lw_sync_log_register once for this thread.
+         * For this to work the thread must be created using 
+         * the lw_thread APIs and the lw_thread API must be
+         * initialized with sync log feature on (that is
+         * call lw_thread_system_init() with TRUE). Otherwise,
+         * we will have a NULL returned from 
+         * lw_thread_sync_log_next_line()
          */
-        lw_sync_log_line_t *line = lw_sync_log_next_line();
-
+        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
         if (line != NULL) {
             line->lw_sll_name = NULL;
             line->lw_sll_lock_ptr = lw_mutex;

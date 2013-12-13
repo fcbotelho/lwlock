@@ -1,7 +1,6 @@
 #ifndef __LW_SYNC_LOG_H__
 #define __LW_SYNC_LOG_H__
 
-#include "lw_thread.h"
 #include "lw_types.h"
 #include <pthread.h>
 typedef enum {
@@ -13,6 +12,7 @@ typedef enum {
     LW_SYNC_TYPE_LWLOCK_WR    = 5,
     LW_SYNC_TYPE_LWLOCK_DWNGR = 6,
     LW_SYNC_TYPE_LWLOCK_UPGR  = 7,
+    LW_SYNC_TYPE_EVENT_WAIT   = 8,
 } lw_sync_type_t;
 
 
@@ -52,8 +52,11 @@ typedef struct {
     /* Pid of current owner. 0 if pid can't be determined. */
     lw_uint32_t lw_sll_pid_of_contending_owner;
 
-    /* Tid of current owner. NULL if it can't be determined */
-    lw_thread_t lw_sll_tid_of_contending_owner;
+    /* Tid of current owner. NULL if it can't be determined. Use 'void  *'
+     * to remove dependancy from dd_thread.h, but this field is really
+     * meant for lw_thread_t
+     */
+    void *lw_sll_tid_of_contending_owner;
 
     /* Any sync event specific data to keep */
     lw_uint64_t lw_sll_specific_data[4];
@@ -61,24 +64,14 @@ typedef struct {
 
 typedef struct lw_sync_log_s lw_sync_log_t;
 
-/* Functions to init/shutdown the entire sync log API */
-extern void
-lw_sync_log_init(void);
-
-extern void
-lw_sync_log_shutdown(void);
-
 /* Functions to handle sync log for each thread */
 extern lw_sync_log_t *
-lw_sync_log_register(void);
+lw_sync_log_create(void);
 
 extern void 
-lw_sync_log_unregister(void);
-
-extern lw_sync_log_t *
-lw_sync_log_get(void);
+lw_sync_log_destroy(lw_sync_log_t *lw_sync_log);
 
 extern lw_sync_log_line_t *
-lw_sync_log_next_line(void);
+lw_sync_log_next_line(lw_sync_log_t *lw_sync_log);
 
 #endif

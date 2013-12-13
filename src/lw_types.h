@@ -1,6 +1,8 @@
 #ifndef __LW_TYPES_H__
 #define __LW_TYPES_H__
 
+#include <stdint.h>
+
 #define LW_IN const
 #define LW_OUT
 #define LW_INOUT
@@ -70,5 +72,19 @@ typedef lw_uint16_t lw_waiter_id_t;
  *   Allow intentionally unused parameters to compile.
  */
 #define LW_UNUSED_PARAMETER(x) ((void) (x))
+
+/*
+ *   Allow intentionally ignored function return value to compile.
+ */
+#define LW_IGNORE_RETURN_VALUE(x) ((void) (x))
+
+/*  
+ * Conversion between pointers and numbers.
+ *  
+ * Works for both 32 and 64 bit pointers.
+ */     
+#define LW_PTR_2_NUM(__ptr, __type) ((__type)((uintptr_t)(__ptr)))
+#define LW_NUM_2_PTR(__num, __type) ((__type *)((uintptr_t)(__num)))
+
 
 #endif

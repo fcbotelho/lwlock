@@ -157,7 +157,7 @@ lw_waiter_clear_global(void)
                                   NULL) == 0);
 }
 
-static void
+void
 lw_waiter_dealloc_global(void)
 {
     lw_waiter_t *waiter = lw_waiter_get();
