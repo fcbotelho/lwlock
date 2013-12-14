@@ -238,7 +238,7 @@ lw_waiter_domain_get_global(LW_INOUT lw_waiter_domain_t *domain)
         int ret;
         waiter = domain->lw_wd_alloc_waiter(domain);
         ret = pthread_setspecific(gd->lw_wgd_waiter_key, waiter);
-        lw_verify(ret != 0);
+        lw_verify(ret == 0);
     }
     return waiter;
 }
