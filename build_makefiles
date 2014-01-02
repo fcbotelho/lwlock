@@ -1,0 +1,9 @@
+#!/bin/sh
+echo "./gendocs"
+./gendocs
+
+echo "autoreconf -ifv"
+autoreconf -ifv
+
+echo "./configure"
+./configure

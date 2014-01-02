@@ -2,28 +2,26 @@
 #define __LW_MUTEX2B_H__
 
 #include "lw_types.h"
-#include "lw_waiter.h"
 #include "lw_lock_stats.h"
 
+/*
+ * Lightweight mutex with 2 bytes.
+ *
+ * Has the same functionality as a lw_mutex_t but cannot track the owner
+ * of the mutex.
+ */
+typedef lw_waiter_id_t lw_mutex2b_t;
 
-/* Now for 2byte version of dd_lwmutex_t called dd_lwmutex2b_t. */
-typedef dd_thread_wait_id_t dd_lwmutex2b_t;
+#define LW_MUTEX2B_INITIALIZER  LW_WAITER_ID_MAX
 
-#define DD_LWMUTEX2B_INITIALIZER  DD_THREAD_WAIT_ID_MAX
+extern void
+lw_mutex2b_init(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
-static inline void
-dd_lwmutex2b_init(LW_INOUT dd_lwmutex2b_t *lwmutex2b)
-{
-    *lwmutex2b = DD_THREAD_WAIT_ID_MAX;
-}
+extern void
+lw_mutex2b_destroy(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
-static inline void
-dd_lwmutex2b_destroy(LW_INOUT dd_lwmutex2b_t *lwmutex2b)
-{
-    lw_verify(*lwmutex2b == DD_THREAD_WAIT_ID_MAX);
-}
-
-extern int dd_lwmutex2b_trylock(LW_INOUT dd_lwmutex2b_t *lwmutex2b);
+extern lw_int32_t
+lw_mutex2b_trylock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
 /* Lock an lwmutex2b. */
 extern void

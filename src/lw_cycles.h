@@ -2,7 +2,9 @@
 #define __LW_CYCLES_H__
 
 #include "lw_types.h"
+#include "lw_debug.h"
 #include <time.h>
+#include <sys/time.h>
 
 static inline lw_uint64_t
 lw_rdtsc(void)
@@ -31,7 +33,7 @@ lw_rdtsc(void)
  */
 #define LW_TSC_DIFF(end, start) \
     ((end) - (start) <= (LW_MAX_UINT64 >> 1)) ? ((end) - (start)) : 0
-#define LW_TSC_DIFF_NOW(start) LW_TSC_DIFF(rdtsc(), (start))
+#define LW_TSC_DIFF_NOW(start) LW_TSC_DIFF(lw_rdtsc(), (start))
 
 extern lw_uint32_t lw_cpu_khz;
 void lw_cycles_init(void);
@@ -43,43 +45,43 @@ lw_cycle(void)
 }   
 
 static inline lw_uint64_t                     
-lw_cycle_to_ns(lw_uint64_t cycles)
+lw_cycle_to_ns(LW_IN lw_uint64_t cycles)
 {
     return (1000 * 1000 * cycles) / lw_cpu_khz;         
 }   
 
 static inline lw_uint64_t                 
-lw_ns_to_cycle(lw_uint64_t ns)                             
+lw_ns_to_cycle(LW_IN lw_uint64_t ns)                             
 {
     return (ns * lw_cpu_khz) / (1000*1000);
 }   
 
 static inline lw_uint64_t
-lw_cycle_to_us(lw_uint64_t cycles)  
+lw_cycle_to_us(LW_IN lw_uint64_t cycles)  
 {
     return 1000 * cycles / lw_cpu_khz;                                           
 }   
 
 static inline lw_uint64_t                                        
-lw_us_to_cycle(lw_uint64_t us)
+lw_us_to_cycle(LW_IN lw_uint64_t us)
 {
     return (us * lw_cpu_khz) / 1000;
 }
 
 static inline lw_uint64_t
-lw_cycle_to_ms(lw_uint64_t cycles)
+lw_cycle_to_ms(LW_IN lw_uint64_t cycles)
 {
     return cycles / lw_cpu_khz;
 }
 
 static inline lw_uint64_t
-lw_ms_to_cycle(lw_uint64_t ms)
+lw_ms_to_cycle(LW_IN lw_uint64_t ms)
 {
     return (ms * lw_cpu_khz);
 }
 
 static inline lw_uint64_t
-lw_cycle_to_sec(lw_uint64_t cycles)
+lw_cycle_to_sec(LW_IN lw_uint64_t cycles)
 {
     return cycles / lw_cpu_khz / 1000;
 }

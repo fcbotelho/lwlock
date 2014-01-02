@@ -2,8 +2,8 @@
 #define __LW_MUTEX_H__
 
 #include "lw_types.h"
-#include "lw_waiter.h"
 #include "lw_lock_stats.h"
+
 
 /*
  * Lightweight mutex.
@@ -12,8 +12,9 @@
  * (which is a read-write lock) for this as that only has a write lock bit but
  * doesn't track the current owner. Since we don't need a reader count, we can
  * track the owner and hence do deadlock detection in the version below. If
- * someday we decide to increase lwi_rwlock size to be 8 bytes and track the
- * writer thread wait id as well, this could be considered obsolete.
+ * someday we decide to increase lw_rwlock size to be 8 bytes and track the
+ * writer thread waiter id as well, this could be considered a more compact 
+ * that delivers the same functionality.
  */
 typedef union lw_mutex_u {
     struct {
@@ -26,25 +27,18 @@ typedef union lw_mutex_u {
 
 #define LW_MUTEX_INITIALIZER  { .lw_mutex_ow = { LW_WAITER_ID_MAX, LW_WAITER_ID_MAX} }
 
-static inline void
-lw_mutex_init(LW_INOUT lw_mutex_t *lw_mutex)
-{
-    lw_mutex->lw_mutex_owner = LW_WAITER_ID_MAX;
-    lw_mutex->lw_mutex_waitq = LW_WAITER_ID_MAX;
-}
+extern void
+lw_mutex_init(LW_INOUT lw_mutex_t *lw_mutex);
 
-static inline void
-lw_mutex_destroy(LW_INOUT lw_mutex_t *lw_mutex)
-{
-    lw_verify(lw_mutex->lw_mutex_owner == LW_WAITER_ID_MAX);
-    lw_verify(lw_mutex->lw_mutex_waitq == LW_WAITER_ID_MAX);
-}
+extern void
+lw_mutex_destroy(LW_INOUT lw_mutex_t *lw_mutex);
 
-extern int lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex);
+extern lw_int32_t
+lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex);
 
 extern void 
 lw_mutex_lock(LW_INOUT lw_mutex_t *lw_mutex, 
-                                    LW_INOUT lw_lock_stats_t *lw_lock_stats);
+              LW_INOUT lw_lock_stats_t *lw_lock_stats);
 
 /* Lock a mutex if not currently owner. Return TRUE if caller was not owner
  * already. FALSE otherwise. In either case, lock is held on return.
@@ -53,33 +47,26 @@ extern lw_bool_t
 lw_mutex_lock_if_not_held(LW_INOUT lw_mutex_t *lw_mutex,
                           LW_INOUT lw_lock_stats_t *lw_lock_stats);
 
-
-/* Chek if lw_mutex is held by the caller and then unlock.
+/*
+ * Chek if lw_mutex is held by the caller and then unlock.
  */
 extern void
 lw_mutex_unlock_if_held(LW_INOUT lw_mutex_t *lw_mutex);
 
-/* Unlock an lw_mutex. If there is a waiter, hand over the lock to the oldest
+/*
+ * Unlock an lw_mutex. If there is a waiter, hand over the lock to the oldest
  * waiter.
  */
-void lw_mutex_unlock(lw_mutex_t *lw_mutex);
+void lw_mutex_unlock(LW_INOUT lw_mutex_t *lw_mutex,
+                     LW_IN lw_bool_t trace);
 
 
 #ifdef LW_DEBUG
-static inline void
-lw_mutex_assert_locked(lw_mutex_t *lw_mutex)
-{
-    lw_waiter_t *waiter;
-    waiter = lw_waiter_get();
-    lw_assert(lw_mutex->owner == waiter->id);
-}
-static inline void
-lw_mutex_assert_not_locked(lw_mutex_t *lw_mutex)
-{
-    lw_waiter_t *waiter;
-    waiter = lw_waiter_get();
-    lw_assert(lw_mutex->owner != waiter->id);
-}
+extern void
+lw_mutex_assert_locked(lw_mutex_t *lw_mutex);
+
+extern void
+lw_mutex_assert_not_locked(lw_mutex_t *lw_mutex);
 #else
 #define lw_mutex_assert_locked(lwm)      LW_UNUSED_PARAMETER(lwm) /* Do Nothing */
 #define lw_mutex_assert_not_locked(lwm)  LW_UNUSED_PARAMETER(lwm) /* Do Nothing */

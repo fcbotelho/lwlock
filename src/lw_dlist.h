@@ -40,7 +40,7 @@ typedef struct {
 struct lw_dlist_struct {
     lw_delem_t *lw_dlist_head;    /**< Pointer to the first element in the list */
     lw_delem_t *lw_dlist_tail;    /**< Pointer to the last element in the list */
-    dd_uint32_t lw_dlist_count;   /**< Number of members in the list */
+    lw_uint32_t lw_dlist_count;   /**< Number of members in the list */
 #ifdef LW_DEBUG
     lw_dl_magic_t lw_dlist_magic;
 #endif
