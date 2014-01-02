@@ -1,5 +1,8 @@
 #include "lw_event.h"
 #include "lw_debug.h"
+#include "lw_thread.h"
+#include "lw_sync_log.h"
+#include "lw_cycles.h"
 #include <pthread.h>
 #include <errno.h>
 
@@ -63,6 +66,7 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
     lw_assert(lw_thread_event_signal ==
               event->lw_te_base.lw_be_iface.lw_ei_signal);
     void *src = event->lw_te_base.lw_be_wait_src;
+    lw_uint64_t tsc_event_wait = lw_rdtsc();
     lw_verify(pthread_mutex_lock(&event->lw_te_mutex) == 0);
     lw_verify(!event->lw_te_waiter_waiting);
     event->lw_te_waiter_waiting = TRUE;
@@ -98,7 +102,21 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
     event->lw_te_base.lw_be_wait_src = NULL;
 
     if (event->lw_te_trace_history) {
-        // TODO: trace history for debugging
+        /* Ideally, all paths leading to event_wait should be annotated at the
+         * upper level but this is a good catch-all. This also means that certain
+         * points will have 2 entries in the per thread logs
+         */
+        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
+        if (line != NULL) {
+            line->lw_sll_name = NULL;
+            line->lw_sll_lock_ptr = event;
+            line->lw_sll_start_tsc = tsc_event_wait;
+            line->lw_sll_end_tsc = lw_rdtsc();
+            line->lw_sll_primitive_type = LW_SYNC_TYPE_EVENT_WAIT;
+            line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_BARRIER_WAIT;
+            line->lw_sll_specific_data[0] = LW_PTR_2_NUM(arg, lw_uint64_t);
+            line->lw_sll_specific_data[1] = LW_PTR_2_NUM(src, lw_uint64_t);
+        }
     }
     return ret;
 }

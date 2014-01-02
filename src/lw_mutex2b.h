@@ -33,7 +33,7 @@ extern void
 _dd_lwmutex2b_unlock(dd_lwmutex2b_t *lwmutex2b, lw_bool_t trace);
 #define dd_lwmutex2b_unlock(l)      _dd_lwmutex2b_unlock(l, TRUE)
 
-#ifdef DD_DEBUG
+#ifdef LW_DEBUG
 extern void dd_assert_lwmutex2b_locked(dd_lwmutex2b_t *lwmutex2b);
 extern void dd_assert_lwmutex2b_not_locked(dd_lwmutex2b_t *lwmutex2b);
 #else

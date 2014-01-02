@@ -127,7 +127,7 @@ void dd_lwlock_stats_str(LW_IN dd_lwlock_stats_t *lwlock_stats,
 #define dd_lwlock_rdunlock_with_stats(_lwlock, _stats) dd_lwlock_unlock(_lwlock, FALSE, _stats)
 #define dd_lwlock_wrunlock_with_stats(_lwlock, _stats) dd_lwlock_unlock(_lwlock, TRUE, _stats)
 
-#ifdef DD_DEBUG
+#ifdef LW_DEBUG
 static inline void
 dd_assert_lwlock_rdlocked(dd_lwlock_t *lock)
 {
@@ -137,7 +137,7 @@ dd_assert_lwlock_rdlocked(dd_lwlock_t *lock)
 #define dd_assert_lwlock_rdlocked(lock) UNUSED_PARAMETER(lock)
 #endif
 
-#ifdef DD_DEBUG
+#ifdef LW_DEBUG
 static inline void
 dd_assert_lwlock_wrlocked(dd_lwlock_t *lock)
 {
@@ -147,7 +147,7 @@ dd_assert_lwlock_wrlocked(dd_lwlock_t *lock)
 #define dd_assert_lwlock_wrlocked(lock) UNUSED_PARAMETER(lock)
 #endif
 
-#ifdef DD_DEBUG
+#ifdef LW_DEBUG
 static inline void
 dd_assert_lwlock_locked(dd_lwlock_t *lock)
 {
@@ -158,7 +158,7 @@ dd_assert_lwlock_locked(dd_lwlock_t *lock)
 #define dd_assert_lwlock_locked(lock)  UNUSED_PARAMETER(lock)
 #endif
 
-#ifdef DD_DEBUG
+#ifdef LW_DEBUG
 static inline void
 dd_assert_lwlock_unlocked(dd_lwlock_t *lock)
 {

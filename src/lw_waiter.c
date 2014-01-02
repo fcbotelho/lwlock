@@ -157,7 +157,7 @@ lw_waiter_clear_global(void)
                                   NULL) == 0);
 }
 
-static void
+void
 lw_waiter_dealloc_global(void)
 {
     lw_waiter_t *waiter = lw_waiter_get();
@@ -238,7 +238,7 @@ lw_waiter_domain_get_global(LW_INOUT lw_waiter_domain_t *domain)
         int ret;
         waiter = domain->lw_wd_alloc_waiter(domain);
         ret = pthread_setspecific(gd->lw_wgd_waiter_key, waiter);
-        lw_verify(ret != 0);
+        lw_verify(ret == 0);
     }
     return waiter;
 }

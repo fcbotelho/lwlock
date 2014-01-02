@@ -40,7 +40,7 @@ typedef lw_waiter_t *
 (*lw_waiter_get_func_t)(LW_INOUT lw_waiter_domain_t *domain);
 
 typedef lw_waiter_t * 
-(*lw_waiter_from_id_func_t)(LW_IN lw_waiter_domain_t *domain, 
+(*lw_waiter_from_id_func_t)(LW_INOUT lw_waiter_domain_t *domain, 
                             LW_IN lw_uint32_t id);
 
 struct lw_waiter_domain_s {
@@ -125,6 +125,9 @@ lw_waiter_wake_all(LW_INOUT lw_waiter_domain_t *domain,
         lw_event_signal(&waiter->lw_waiter_event, arg);
     }
 }
+
+extern void
+lw_waiter_dealloc_global(void);
 
 /* Initialize the global waiter domain */
 extern void

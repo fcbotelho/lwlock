@@ -10,7 +10,7 @@
  * It has to be called before using any API in the lw_lock library.
  */
 extern void 
-lw_lock_init(void);
+lw_lock_init(lw_bool_t track_sync_events);
 
 /**
  * Cleanup function
@@ -24,7 +24,6 @@ lw_lock_init(void);
 extern void 
 lw_lock_shutdown(void);
 
-#include "lw_sync_log.h"
 #include "lw_mutex.h"
 #include "lw_lock_stats.h"
 #include "lw_thread.h"

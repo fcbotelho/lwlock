@@ -49,7 +49,7 @@ lw_lock_stats_str(LW_IN lw_lock_stats_t *lw_lock_stats,
 
     snprintf(buf, 
              size, 
-             "%10llu(%6llu.%03llu sec) %10llu(%6lu.%03llu sec)\n",
+             "%10llu(%6llu.%03llu sec) %10llu(%6llu.%03llu sec)\n",
              lc, 
              lct / 1000, 
              lct % 1000,
