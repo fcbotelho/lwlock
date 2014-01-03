@@ -6,13 +6,9 @@
 
 struct lw_thread_id_s {
     pthread_t      lw_tid_pthread_id;
-    // Removing lw_tid_thread_pid since this needs
-    // system specific calls and does not look like
-    // this is necessary
-    // lw_uint32_t    lw_tid_thread_pid; 
     lw_bool_t      lw_tid_detached;
     lw_waiter_t    *lw_tid_waiter;
-    // TODO: port dd_thread_err_stack_t and operations
+    // TODO: port thread_err_stack_t and operations
     // lw_err_stack_t *lw_tid_err_stack;
     const char     *lw_tid_name;
     lw_int32_t     *lw_tid_errno_ptr;
@@ -65,21 +61,21 @@ lw_thread_id_destructor(void *arg)
 {
     lw_thread_t tid = arg;
 
-    if (tid->lw_tid_sync_log != NULL) {
-        lw_sync_log_t *lw_sync_log = tid->lw_tid_sync_log;
-        tid->lw_tid_sync_log = NULL;
-        lw_sync_log_destroy(lw_sync_log);
-    }
-
     if (tid->lw_tid_detached) {
+        if (tid->lw_tid_sync_log != NULL) {
+            lw_sync_log_t *lw_sync_log = tid->lw_tid_sync_log;
+            tid->lw_tid_sync_log = NULL;
+            lw_sync_log_destroy(lw_sync_log);
+        }
+
         /* Free this struct */
         free(tid);
     }
 }
 
 void
-lw_thread_join(lw_thread_t tid,
-               void **retval)
+lw_thread_join(LW_IN lw_thread_t tid,
+               LW_INOUT void **retval)
 {
     int ret;
 
@@ -87,24 +83,17 @@ lw_thread_join(lw_thread_t tid,
     ret = pthread_join(tid->lw_tid_pthread_id, retval);
     lw_verify(ret == 0);
     tid->lw_tid_detached = TRUE;
-
-    if (tid->lw_tid_sync_log != NULL) {
-        lw_sync_log_t *lw_sync_log = tid->lw_tid_sync_log;
-        tid->lw_tid_sync_log = NULL;
-        lw_sync_log_destroy(lw_sync_log);
-    }
-
-    free(tid);
+    lw_thread_id_destructor(tid);
 }
 
 void
-lw_thread_cancel(lw_thread_t tid)
+lw_thread_cancel(LW_IN lw_thread_t tid)
 {
     LW_IGNORE_RETURN_VALUE(pthread_cancel(tid->lw_tid_pthread_id));
 }
 
 void
-lw_thread_detach(lw_thread_t tid)
+lw_thread_detach(LW_IN lw_thread_t tid)
 {
     int ret;
     ret = pthread_detach(tid->lw_tid_pthread_id);
@@ -113,7 +102,7 @@ lw_thread_detach(lw_thread_t tid)
 }
 
 pthread_t
-lw_thread_get_ptid(lw_thread_t tid)
+lw_thread_get_ptid(LW_IN lw_thread_t tid)
 {
     if (tid == NULL) {
         return pthread_self();
@@ -139,18 +128,9 @@ lw_thread_private_alloc(LW_IN char *name)
     lw_verify(tid->lw_tid_waiter != NULL);
 }
 
-static void
-lw_thread_private_free()
-{
-    /*
-     * Free the thread specific wait structure.
-     */
-    lw_waiter_dealloc_global();
-}
-
 /*
  * Internal thread start routine.  This routine acts as a wrapper for
- * the start routine provided by the caller of dd_thread_create().
+ * the start routine provided by the caller of lw_thread_create().
  * This routine performs thread specific initialization before handing
  * off control.
  */
@@ -173,7 +153,10 @@ _lw_thread_start_func(const char *name,
 
     retval = (*start_func)(arg);
 
-    lw_thread_private_free();
+     /*
+     * Free the thread specific waiter structure.
+     */
+    lw_waiter_dealloc_global();
 
     /*
      * This is a hack to keep name from being in a register so it will
@@ -185,9 +168,10 @@ _lw_thread_start_func(const char *name,
 }
 
 /*
- * This provides the base of the lw_thread stack so that it can
- * make the thread id and name show up in a gdb stack display
- * of a thread's call stack.
+ * This provides the base of a lw_thread. Here the lw_thread_id_key is 
+ * initialized and set the specific thread ID associated to the thread
+ * running this function. Then the wrapper start function is called and
+ * after it returns a clean up is done.
  */
 static void *
 _lw_thread_base(void *void_tharg)
@@ -220,14 +204,14 @@ _lw_thread_base(void *void_tharg)
 }
 
 /**
- * Create a thread
+ * Create an lw_thread
  *
  * @param thread (i) the output parameter specifying a pointer to
- *     a thread id variable.
+ *        a thread id variable.
  * @param start_func (i) the input parameter specifying a pointer to
- *     a function to be called at thread creation time.
+ *        a function to be called at thread creation time.
  * @param arg (i) the input parameter specifying the pointer to
- *     argument data to be passed to the start function.
+ *        argument data to be passed to the start function.
  *
  * <br>
  * @description
@@ -237,16 +221,17 @@ _lw_thread_base(void *void_tharg)
  * start_func.  On success, 0 is returned and otherwise non-zero on error.
  */
 int
-lw_thread_create(lw_thread_t *thread,
-                 pthread_attr_t *attr,
-                 lw_thread_run_func_t start_func,
-                 void *arg,
-                 char const *name)
+lw_thread_create(LW_INOUT lw_thread_t *thread,
+                 LW_INOUT pthread_attr_t *attr,
+                 LW_INOUT lw_thread_run_func_t start_func,
+                 LW_INOUT void *arg,
+                 LW_IN char const *name)
 {
     _lw_thread_arg_t *thargs;
     int ret;
     pthread_attr_t attr2;
     int detach_state = PTHREAD_CREATE_JOINABLE;
+    lw_thread_t tid;
 
     /*
      * Allocate a thread argument structure and copy the caller arguments
@@ -258,7 +243,9 @@ lw_thread_create(lw_thread_t *thread,
     thargs->lw_ta_arg = arg;
     thargs->lw_ta_name = name;
     thargs->lw_ta_tid = lw_thread_id_alloc(FALSE);
-    *thread = thargs->lw_ta_tid;
+    tid = thargs->lw_ta_tid;
+
+    *thread = tid;
 
     if (attr == NULL) {
         lw_verify(pthread_attr_init(&attr2) == 0);
@@ -273,19 +260,23 @@ lw_thread_create(lw_thread_t *thread,
          * thread is created. The thread could exit immediately and free
          * the pointer.
          */
-        (*thread)->lw_tid_detached = TRUE;
+        tid->lw_tid_detached = TRUE;
     }
 
     ret = pthread_create(&(thargs->lw_ta_tid->lw_tid_pthread_id),
                          attr,
                          _lw_thread_base,
                          thargs);
-    thread = NULL; /* This belongs to created thread now */
-    
+
     if (ret != 0) {
         fprintf(stderr, "%s: pthread_create failed (%d)\n", __func__, ret);
-        free(thargs->lw_ta_tid);
+        tid->lw_tid_detached = TRUE;
+        lw_thread_id_destructor(tid);
+        free(thargs);
     }
+
+    thread = NULL; /* This belongs to created thread now */
+    thargs = NULL; /* This belongs to created thread now */  
 
     if (attr == &attr2) {
         lw_verify(pthread_attr_destroy(&attr2) == 0);
@@ -296,10 +287,10 @@ lw_thread_create(lw_thread_t *thread,
 
 
 int
-dd_thread_create_detached(lw_thread_t *thread,
-                          lw_thread_run_func_t start_func,
-                          void *arg,
-                          char const *name)
+lw_thread_create_detached(LW_INOUT lw_thread_t *thread,
+                          LW_INOUT lw_thread_run_func_t start_func,
+                          LW_INOUT void *arg,
+                          LW_IN char const *name)
 {
     pthread_attr_t attr;
     int rc = 0;
@@ -312,7 +303,7 @@ dd_thread_create_detached(lw_thread_t *thread,
 }
 
 void
-lw_thread_system_init(lw_bool_t track_sync_events)
+lw_thread_system_init(LW_IN lw_bool_t track_sync_events)
 {
     int ret;
     lw_verify(lw_thread_initialized == FALSE);
@@ -334,6 +325,7 @@ lw_thread_system_shutdown(void)
     ret = pthread_key_delete(lw_thread_id_key);
     lw_verify(ret == 0);
     
+    lw_thread_track_sync_events = FALSE;
     lw_thread_initialized = FALSE;
 }
 

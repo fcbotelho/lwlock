@@ -85,7 +85,7 @@ do_test(lw_bool_t use_lock)
     lw_thread_t thrds[THRD_NUM];
     
     fprintf(stdout, "%s: RUNNING TEST (use_lock=%s) \n", __func__, use_lock ? "TRUE" : "FALSE");
-    fprintf(stdout, "------------------------------\n", __func__);
+    fprintf(stdout, "%s:------------------------------\n", __func__);
 
     clear_data();
 
