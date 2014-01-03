@@ -13,6 +13,40 @@
 #define lw_atomic_destroy
 
 /**
+ * Compare and Exchange (16 bit)
+ *
+ * @param var (i) Pointer to a 16 bit integer value to modify
+ * @param old (i) Value expected to be in var
+ * @param new (i) New value to be stored in var
+ *
+ * @description
+ *
+ * This interface provide the ability to atomically compare and exchange
+ * a 16 bit integer value.  This routine returns the value contained in
+ * the specified var at the time the routine is called.  If a race
+ * occurred and var nolonger contains the value specified by old, no
+ * change is made, otherwise the new value is stored.
+ *
+ * @return The value originally contained in var.
+ */
+static inline lw_uint32_t
+lw_uint16_cmpxchg(LW_INOUT volatile lw_uint16_t *var,
+                  LW_IN lw_uint16_t old,
+                  LW_IN lw_uint16_t new)
+{
+    lw_uint16_t prev;
+
+    asm volatile("lock; cmpxchgw %1,%2"
+                  : "=a"(prev)
+                  : "q"(new),
+                  "m"(*var),
+                  "0"(old)
+                  : "memory");
+
+    return prev;
+}
+
+/**
  * Compare and Exchange (32 bit)
  *
  * @param var (i) Pointer to a 32 bit integer value to modify
@@ -197,6 +231,27 @@ lw_atomic_init(void);
 extern void
 lw_atomic_destroy(void);
 
+/**
+ * Compare and Exchange (16 bit)
+ *
+ * @param var (i) Pointer to a 16 bit integer value to modify
+ * @param old (i) Value expected to be in var
+ * @param new (i) New value to be stored in var
+ *
+ * @description
+ *
+ * This interface provide the ability to atomically compare and exchange
+ * a 16 bit integer value.  This routine returns the value contained in
+ * the specified var at the time the routine is called.  If a race
+ * occurred and var nolonger contains the value specified by old, no
+ * change is made, otherwise the new value is stored.
+ *
+ * @return The value originally contained in var.
+ */
+extern lw_uint32_t
+lw_uint16_cmpxchg(LW_INOUT volatile lw_uint16_t *var,
+                  LW_IN lw_uint16_t old,
+                  LW_IN lw_uint16_t new);
 
 /**
  * Compare and Exchange (32 bit)

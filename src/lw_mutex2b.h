@@ -23,22 +23,25 @@ lw_mutex2b_destroy(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 extern lw_int32_t
 lw_mutex2b_trylock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
-/* Lock an lwmutex2b. */
+/* Lock an lw_mutex2b. */
 extern void
-dd_lwmutex2b_lock(LW_INOUT dd_lwmutex2b_t *lwmutex2b,
-                  LW_INOUT dd_lwlock_stats_t *lwlock_stats);
+dd_lwmutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
+                  LW_INOUT lw_lock_stats_t *lw_lock_stats);
 
-/* Unlock an lwmutex2b. If there is a waiter, hand over the lock to the oldest waiter. */
+/*
+ * Unlock an lwmutex2b. If there is a waiter, hand over the lock 
+ * to the oldest waiter. 
+ * */
 extern void
-_dd_lwmutex2b_unlock(dd_lwmutex2b_t *lwmutex2b, lw_bool_t trace);
-#define dd_lwmutex2b_unlock(l)      _dd_lwmutex2b_unlock(l, TRUE)
+dd_lwmutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b, 
+                    LW_IN lw_bool_t trace);
 
 #ifdef LW_DEBUG
-extern void dd_assert_lwmutex2b_locked(dd_lwmutex2b_t *lwmutex2b);
-extern void dd_assert_lwmutex2b_not_locked(dd_lwmutex2b_t *lwmutex2b);
+extern void lw_mutex2b_assert_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b);
+extern void lw_mutex2b_assert_not_locked(lw_mutex2b_t *lw_mutex2b);
 #else
-#define dd_assert_lwmutex2b_locked(lwm)   UNUSED_PARAMETER(lwm) /* Do Nothing */
-#define dd_assert_lwmutex2b_not_locked(lwm)   UNUSED_PARAMETER(lwm) /* Do Nothing */
+#define lw_mutex2b_assert_locked(lwm) LW_UNUSED_PARAMETER(lwm) /* Do Nothing */
+#define lw_mutex2b_assert_not_locked(lwm) LW_UNUSED_PARAMETER(lwm) /* Do Nothing */
 #endif
 
 #endif
