@@ -25,6 +25,7 @@ extern void
 lw_lock_shutdown(void);
 
 #include "lw_mutex.h"
+#include "lw_mutex2b.h"
 #include "lw_lock_stats.h"
 #include "lw_thread.h"
 #endif /* __LW_LOCK_H__ */
