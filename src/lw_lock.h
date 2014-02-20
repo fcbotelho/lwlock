@@ -26,6 +26,7 @@ lw_lock_shutdown(void);
 
 #include "lw_mutex.h"
 #include "lw_mutex2b.h"
+#include "lw_cond_var.h"
 #include "lw_lock_common.h"
 #include "lw_lock_stats.h"
 #include "lw_thread.h"

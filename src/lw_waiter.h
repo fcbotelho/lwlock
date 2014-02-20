@@ -110,7 +110,7 @@ lw_waiter_wake_all(LW_INOUT lw_waiter_domain_t *domain,
 {
     lw_waiter_t *waiter = NULL;
     lw_waiter_id_t id;
-    dd_assert(_id <= LW_WAITER_ID_MAX);
+    lw_assert(_id <= LW_WAITER_ID_MAX);
     id = (lw_waiter_id_t) _id;
     if (domain == NULL) {
         domain = lw_waiter_global_domain;
