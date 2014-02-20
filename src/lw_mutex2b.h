@@ -25,7 +25,7 @@ lw_mutex2b_trylock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
 /* Lock an lw_mutex2b. */
 extern void
-dd_lwmutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
+lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
                   LW_INOUT lw_lock_stats_t *lw_lock_stats);
 
 /*
@@ -33,7 +33,7 @@ dd_lwmutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
  * to the oldest waiter. 
  * */
 extern void
-dd_lwmutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b, 
+lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b, 
                     LW_IN lw_bool_t trace);
 
 #ifdef LW_DEBUG

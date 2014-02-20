@@ -1,4 +1,5 @@
 #include "lw_lock.h"
+#include "lw_lock_common.h"
 #include "lw_debug.h"
 
 #include <stdio.h>
@@ -25,7 +26,8 @@
  */
 lw_uint64_t data[DATA_NUM];
 lw_uint64_t sum; 
-lw_mutex_t data_mutex; // it protects the data (if used)
+void *data_lock; // protects data, use void * to be able to use different kinds of locks
+lw_lock_type_t data_lock_type = LW_LOCK_TYPE_NONE;
 
 lw_mutex_t barrier_mutex; //used to make sure that threads start simultaneously
 
@@ -40,12 +42,11 @@ clear_data(void)
 }
 
 static void
-critical_region(lw_bool_t with_lock) 
+critical_region(void) 
 {
     lw_uint32_t i;
-    if (with_lock == TRUE) {
-        lw_mutex_lock(&data_mutex, NULL);
-    }
+
+    lw_lock_common_acquire_lock(data_lock, data_lock_type, NULL, NULL);
 
     for (i = 0; i < DATA_NUM; i++) {
         data[i] += 1;
@@ -56,75 +57,107 @@ critical_region(lw_bool_t with_lock)
         sum += data[i];
     }
 
-    if (with_lock == TRUE) {
-        lw_mutex_unlock(&data_mutex, TRUE);
-    }
+    lw_lock_common_drop_lock(data_lock, data_lock_type, NULL);
 }
 
 static void *
-test_thread_fn(void *arg)
+wr_thread_fn(void *arg)
 {
     lw_uint32_t i;
-    lw_bool_t use_lock = *((lw_bool_t *) arg);
 
     // wait for all threads to be created
     lw_mutex_lock(&barrier_mutex, NULL);
     lw_mutex_unlock(&barrier_mutex, TRUE);
 
     for (i =0; i < DATA_MAX_INCREMENT; i++) {
-        critical_region(use_lock);
+        critical_region();
     }
 
     return NULL;
 }
 
 static void
-do_test(lw_bool_t use_lock)
+do_test(void)
 {
     lw_uint32_t i;
-    lw_thread_t thrds[THRD_NUM];
+    lw_thread_t wr_thrds[THRD_NUM];
     
-    fprintf(stdout, "%s: RUNNING TEST (use_lock=%s) \n", __func__, use_lock ? "TRUE" : "FALSE");
-    fprintf(stdout, "%s:------------------------------\n", __func__);
+    fprintf(stdout, "RUNNING TEST (lock type=%d) \n", data_lock_type);
+    fprintf(stdout, "------------------------------\n");
 
     clear_data();
 
-    lw_lock_init(TRUE);
-    lw_mutex_init(&data_mutex);
-    lw_mutex_init(&barrier_mutex);
-
     lw_mutex_lock(&barrier_mutex, NULL);
     for (i = 0; i < THRD_NUM; i++) {
-        lw_verify(lw_thread_create(&thrds[i], 
+        lw_verify(lw_thread_create(&wr_thrds[i], 
                                    NULL, 
-                                   test_thread_fn, 
-                                   (void *)&use_lock, 
-                                   "test_thrd") == 0);
-        fprintf(stdout, "%s: created thread %d\n", __func__, i);
+                                   wr_thread_fn, 
+                                   NULL, 
+                                   "wr_thrd") == 0);
+        fprintf(stdout, "%s: created write thread %d\n", __func__, i);
     }
     lw_mutex_unlock(&barrier_mutex, TRUE); // This will allow the threads to actually start working
 
     for (i = 0; i < THRD_NUM; i++) {
-        lw_thread_join(thrds[i], NULL);
-        fprintf(stdout, "%s: joined thread %d\n", __func__, i);
+        lw_thread_join(wr_thrds[i], NULL);
+        fprintf(stdout, "%s: joined write thread %d\n", __func__, i);
     }
 
-    fprintf(stdout, "%s: Final values:\n", __func__);
+    fprintf(stdout, "Final values:\n");
 
     for (i = 0; i < DATA_NUM; i++) {
         fprintf(stdout, "\tdata[%d] = %llu\n", i, data[i]);
     }
     fprintf(stdout, "\tsum = %llu\n", sum);
-
-    lw_mutex_destroy(&data_mutex);
-    lw_mutex_destroy(&barrier_mutex);
-    lw_lock_shutdown();
 }
 
 
+static void
+print_expected_result(void)
+{
+    lw_uint32_t i;
+    lw_uint64_t N = DATA_MAX_INCREMENT * THRD_NUM;
+
+    fprintf(stdout, "Expected Final values:\n");
+
+    for (i = 0; i < DATA_NUM; i++) {
+        fprintf(stdout, "\tdata[%d] = %llu\n", i, N);
+    }
+
+    fprintf(stdout, "\tsum = %llu\n", DATA_NUM * (N + 1) * N / 2);
+}
+
 int main(int argc, char **argv)
 {
-    do_test(TRUE); // test with our lock, this should produce correct final value
-    do_test(FALSE); // test without lock, this should produce incorrect final value
+    /* common init */
+    lw_lock_init(TRUE);
+    lw_mutex_init(&barrier_mutex);
+
+    print_expected_result();
+
+    /* Test with no lock */
+    data_lock = NULL;
+    data_lock_type = LW_LOCK_TYPE_NONE;
+    do_test();
+
+    /* Test with lw_mutex_t */
+    lw_mutex_t mutex;
+    lw_mutex_init(&mutex);
+    data_lock = &mutex;
+    data_lock_type = LW_LOCK_TYPE_LWMUTEX;
+    do_test();
+    lw_mutex_destroy(&mutex);
+
+    /* Test with lw_mutex2b_t */
+    lw_mutex2b_t mutex2b;
+    lw_mutex2b_init(&mutex2b);
+    data_lock = &mutex2b;
+    data_lock_type = LW_LOCK_TYPE_LWMUTEX2B;
+    do_test();
+    lw_mutex2b_destroy(&mutex2b);
+
+    /* common shutdown */
+    lw_mutex_destroy(&barrier_mutex);
+    lw_lock_shutdown();    
     return 0;
 }
