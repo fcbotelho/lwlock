@@ -6,7 +6,7 @@
 #include "lw_mutex2b.h"
 #include <pthread.h>
 
-/* This file implementes a commoin set of APIs for lw lock primitives. 
+/* This file implements a common set of APIs for lw lock primitives. 
  * This common set of API has two uses:
  *    1) write test program that works on different kinds of locks
  *       with minimum code duplication
@@ -22,6 +22,26 @@ typedef enum {
     LW_LOCK_TYPE_NONE /* a no-op lock that simulates presence of race */
 } lw_lock_type_t;
 
+static const char *
+lw_lock_common_lock_type_description(lw_lock_type_t type) {
+    switch(type) {
+        case LW_LOCK_TYPE_PMUTEX:
+            return "LW_LOCK_TYPE_PMUTEX";
+        case LW_LOCK_TYPE_LWMUTEX:
+            return "LW_LOCK_TYPE_LWMUTEX";
+        case LW_LOCK_TYPE_LWMUTEX2B:
+            return "LW_LOCK_TYPE_LWMUTEX2B";
+        case LW_LOCK_TYPE_LWRWLOCK_RD:
+            return "LW_LOCK_TYPE_LWRWLOCK_RD";
+        case LW_LOCK_TYPE_LWRWLOCK_WR:
+            return "LW_LOCK_TYPE_LWRWLOCK_WR";
+        case LW_LOCK_TYPE_NONE:
+            return "LW_LOCK_TYPE_NONE";
+        default:
+            fprintf(stderr, "%s: unknown lock type\n", __func__);
+            lw_verify(FALSE);
+    }
+}
 
 static inline void 
 lw_lock_common_acquire_lock(LW_INOUT void *lock,

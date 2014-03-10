@@ -82,7 +82,9 @@ do_test(void)
     lw_uint32_t i;
     lw_thread_t wr_thrds[THRD_NUM];
     
-    fprintf(stdout, "RUNNING TEST (lock type=%d) \n", data_lock_type);
+    fprintf(stdout, 
+            "RUNNING TEST (lock type=%s) \n", 
+            lw_lock_common_lock_type_description(data_lock_type));
     fprintf(stdout, "------------------------------\n");
 
     clear_data();

@@ -41,7 +41,10 @@ consumer_func(void *arg)
     for(i = 0;i < LOOP_COUNT; i++) {
         lw_mutex_lock(&mutex, NULL);
         while(in_idx == out_idx) {
-            lw_condvar_wait(&mutex, LW_LOCK_TYPE_LWMUTEX, NULL, &condvar_newdata);
+            lw_condvar_wait(&condvar_newdata, 
+                            &mutex, 
+                            LW_LOCK_TYPE_LWMUTEX, 
+                            NULL);
         }
         fprintf(stdout, "Consumer %d consumed: %d\n", cons_id, buff[out_idx]);
         global_sum += buff[out_idx];
@@ -64,10 +67,13 @@ producer_func(void *arg)
     lw_mutex_unlock(&barrier_mutex, TRUE);
 
     fprintf(stdout, "Producer thread %d starts\n", prod_id);
-    for(i = 0;i < LOOP_COUNT; i++) {
+    for(i = 0; i < LOOP_COUNT; i++) {
         lw_mutex_lock(&mutex, NULL);
         while(((in_idx + 1) % BUFF_SIZE) == out_idx) {
-            lw_condvar_wait(&mutex, LW_LOCK_TYPE_LWMUTEX, NULL, &condvar_newspace);
+            lw_condvar_wait(&condvar_newspace,
+                            &mutex, 
+                            LW_LOCK_TYPE_LWMUTEX, 
+                            NULL);
         }
         buff[in_idx] = ++global_count;
         fprintf(stdout, "Producer %d produced: %d\n", prod_id, global_count);
@@ -97,7 +103,7 @@ int main(int argc, char **argv)
 
     lw_mutex_lock(&barrier_mutex, NULL);
 
-    /* create produer threads */
+    /* create producer threads */
     for (i = 0; i < PRODUCERS; i++) {
         prod_args[i] = i;
         lw_verify(lw_thread_create(&prod_thrds[i], 
@@ -137,8 +143,11 @@ int main(int argc, char **argv)
     fprintf(stdout, "------------------------------\n");
     fprintf(stdout, "Final global_count = %d\n", global_count);
     fprintf(stdout, "Final global_sum = %d\n", global_sum);
-    fprintf(stdout, "[global_sum=(global_count+1)*global_count/2=(%d+1)*%d/2=%d]\n",
-            global_count, global_count, (global_count + 1) * global_count / 2);
+    fprintf(stdout, 
+            "[global_sum=(global_count+1)*global_count/2=(%d+1)*%d/2=%d]\n",
+            global_count, 
+            global_count, 
+            (global_count + 1) * global_count / 2);
 
     lw_mutex_destroy(&mutex);
     lw_condvar_destroy(&condvar_newdata);
