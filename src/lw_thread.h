@@ -4,7 +4,7 @@
 #include "lw_types.h"
 #include "lw_sync_log.h"
 #include <pthread.h>
-
+#include "lw_waiter.h"
 typedef struct lw_thread_id_s *lw_thread_t;
 typedef void *(*lw_thread_run_func_t)(void *);
 
@@ -52,5 +52,8 @@ lw_thread_system_shutdown(void);
 
 extern lw_sync_log_line_t *
 lw_thread_sync_log_next_line(void);
+
+extern lw_bool_t
+lw_thread_wakeup_pending(lw_waiter_t *waiter);
 
 #endif /* _DD_THREAD_H_ */

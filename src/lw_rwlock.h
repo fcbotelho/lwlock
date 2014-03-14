@@ -2,176 +2,225 @@
 #define __LW_RWLOCK_H__
 
 #include "lw_types.h"
-#include "lw_waiter.h"
 #include "lw_lock_stats.h"
 
 
 /**
  * Lightweight read/write locks
  *
- * Has the same functionality as dd_rwlock (which is based on pthread_rwlock),
- * with smaller space (4-bytes) and faster non-contention performance (only
- * one 32-bit cmpxchg op).  However, performance under contention is worse
- * than dd_rwlock. This lock is also completely fair, whereas dd_rwlock
- * sacrifices fairness for higher reader throughput.
+ * Has the same functionality as pthread_rwlock, with smaller space (4-bytes) 
+ * and faster non-contention performance (only one 32-bit cmpxchg op).  However, 
+ * performance under contention is worse than pthread_rwlock. This lock is by default 
+ * completely fair, whereas pthread_rwlock sacrifices fairness for higher reader 
+ * throughput.
  */
 
-typedef union dd_lwlock_u {
+typedef union lw_rwlock_u {
     struct {
         union {
             struct {
-                dd_uint16_t unfair  : 1;
-                dd_uint16_t wlocked : 1;
-                dd_uint16_t readers : 14;
+                lw_uint16_t lw_rwlock_unfair  : 1;
+                lw_uint16_t lw_rwlock_wlocked : 1;
+                lw_uint16_t lw_rwlock_readers : 14;
             };
             struct {
-                dd_uint16_t flags : 1;
-                dd_uint16_t locked : 15;
+                lw_uint16_t lw_rwlock_flags : 1;
+                lw_uint16_t lw_rwlock_locked : 15;
             };
         };
-        dd_thread_wait_id_t wait_id;
+        lw_waiter_id_t lw_rwlock_waitq;
     };
-    volatile dd_uint32_t val;
+    volatile lw_uint32_t lw_rwlock_val;
     struct {
-        dd_uint16_t flags : 1;
-        dd_uint16_t locked : 15;
-        dd_thread_wait_id_t wait_id;
-    } init;
-} __attribute__ ((__packed__)) dd_lwlock_t;
+        lw_uint16_t lw_rwlock_flags : 1;
+        lw_uint16_t lw_rwlock_locked : 15;
+        lw_waiter_id_t lw_rwlock_waitq;
+    } lw_rwlock_init;
+} __attribute__ ((__packed__)) lw_rwlock_t;
 
 typedef enum {
-    DD_LWLOCK_SHARED        = 0x0,
-    DD_LWLOCK_WAIT          = 0x0, /* Blocking lock. */
-    DD_LWLOCK_WAIT_INLINE   = 0x0, /* Wait right away on blocking lock */
-    DD_LWLOCK_EXCLUSIVE     = 0x1,
-    DD_LWLOCK_UPGRADE       = 0x2,
-    DD_LWLOCK_NOWAIT        = 0x4, /* Try lock. WAIT_INLINE/DEFERRED meaningless if set. */
-    DD_LWLOCK_WAIT_DEFERRED = 0x8, /* Enqueue waiter but don't wait right away. */
-} dd_lwlock_attempt_t;
+    LW_RWLOCK_SHARED        = 0x0,
+    LW_RWLOCK_WAIT          = 0x0, /* Blocking lock. */
+    LW_RWLOCK_WAIT_INLINE   = 0x0, /* Wait right away on blocking lock */
+    LW_RWLOCK_EXCLUSIVE     = 0x1,
+    LW_RWLOCK_UPGRADE       = 0x2,
+    LW_RWLOCK_NOWAIT        = 0x4, /* Try lock. WAIT_INLINE/DEFERRED meaningless if set. */
+    LW_RWLOCK_WAIT_DEFERRED = 0x8, /* Enqueue waiter but don't wait right away. */
+} lw_rwlock_attempt_t;
 
-typedef enum dd_lwlock_flags_e {
-    DD_LWLOCK_FAIR = 0x00,
-    DD_LWLOCK_UNFAIR = 0x01,
-    DD_LWLOCK_DEFAULT = DD_LWLOCK_FAIR,
-} dd_lwlock_flags_t;
+typedef enum lw_rwlock_flags_e {
+    LW_RWLOCK_FAIR = 0x00,
+    LW_RWLOCK_UNFAIR = 0x01,
+    LW_RWLOCK_DEFAULT = LW_RWLOCK_FAIR,
+} lw_rwlock_flags_t;
 
-#define DD_LWLOCK_INIT(_f)  { .init = { .flags = _f, .locked = 0, .wait_id = DD_THREAD_WAIT_ID_MAX } }
-#define DD_LWLOCK_INITIALIZER  DD_LWLOCK_INIT(DD_LWLOCK_DEFAULT)
+#define LW_RWLOCK_INIT(_f)  \
+{ .lw_rwlock_init = { .lw_rwlock_flags = _f, \
+                      .lw_rwlock_locked = 0, \
+                      .lw_rwlock_waitq = LW_WAITER_ID_MAX } }
+#define LW_RWLOCK_INITIALIZER  LW_RWLOCK_INIT(LW_RWLOCK_DEFAULT)
 
 int
-dd_lwlock_lock(LW_INOUT dd_lwlock_t *lwlock,
-               LW_IN dd_lwlock_attempt_t type,
-               LW_INOUT dd_thread_wait_t *waiter,
-               LW_INOUT dd_lwlock_stats_t *lwlock_stats);
+lw_rwlock_lock(LW_INOUT lw_rwlock_t *rwlock,
+               LW_IN lw_rwlock_attempt_t type,
+               LW_INOUT lw_waiter_t *waiter,
+               LW_INOUT lw_lock_stats_t *lw_lock_stats);
 
 void
-dd_lwlock_unlock(LW_INOUT dd_lwlock_t *lwlock,
+lw_rwlock_unlock(LW_INOUT lw_rwlock_t *rwlock,
                  LW_IN lw_bool_t exclusive,
-                 LW_INOUT dd_lwlock_stats_t *lwlock_stats);
+                 LW_INOUT lw_lock_stats_t *lw_lock_stats);
 
-/* Downgrade a lwlock from writer lock to reader lock */
+/* Downgrade a rwlock from writer lock to reader lock */
 extern void
-dd_lwlock_downgrade(LW_INOUT dd_lwlock_t *lwlock,
-                    LW_INOUT dd_lwlock_stats_t *stats);
+lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock,
+                    LW_INOUT lw_lock_stats_t *stats);
 
 extern int
-dd_lwlock_upgrade(LW_INOUT dd_lwlock_t *lwlock,
-                  LW_INOUT dd_lwlock_stats_t *stats);
+lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock,
+                  LW_INOUT lw_lock_stats_t *stats);
 
 static inline lw_bool_t
-dd_lwlock_has_waiters(LW_INOUT dd_lwlock_t *lwlock)
+lw_rwlock_has_waiters(LW_INOUT lw_rwlock_t *rwlock)
 {
-    dd_lwlock_t old;
-    old.val = lwlock->val;
-    return (old.wait_id != DD_THREAD_WAIT_ID_MAX);
+    lw_rwlock_t old;
+    old.lw_rwlock_val = rwlock->lw_rwlock_val;
+    return (old.lw_rwlock_waitq != LW_WAITER_ID_MAX);
 }
 
-#define dd_lwlock_async_done(waiter)    dd_thread_wait_wakeup_pending(waiter)
+#define lw_rwlock_async_done(waiter)    lw_thread_wakeup_pending(waiter)
 
-void dd_lwlock_contention_wait(LW_INOUT dd_lwlock_t *lwlock,
-                               dd_lwlock_attempt_t type,
-                               LW_INOUT dd_thread_wait_t *waiter,
-                               LW_INOUT dd_lwlock_stats_t *lwlock_stats);
+void lw_rwlock_contention_wait(LW_INOUT lw_rwlock_t *rwlock,
+                               LW_IN lw_rwlock_attempt_t type,
+                               LW_INOUT lw_waiter_t *waiter,
+                               LW_INOUT lw_lock_stats_t *lw_lock_stats);
 
-void dd_lwlock_init(LW_INOUT dd_lwlock_t *lwlock, LW_IN dd_lwlock_flags_t flags);
-void dd_lwlock_destroy(LW_INOUT dd_lwlock_t *lwlock);
-void dd_lwlock_stats_init(LW_INOUT dd_lwlock_stats_t *lwlock_stats,
+void lw_rwlock_init(LW_INOUT lw_rwlock_t *rwlock, LW_IN lw_rwlock_flags_t flags);
+void lw_rwlock_destroy(LW_INOUT lw_rwlock_t *rwlock);
+void lw_rwlock_stats_init(LW_INOUT lw_lock_stats_t *lw_lock_stats,
                           LW_IN char *name);
 
-#define DD_LWLOCK_STATS_TRACE_ON(stats)         ((stats)->trace_history = 1)
-#define DD_LWLOCK_STATS_TRACE_OFF(stats)        ((stats)->trace_history = 0)
+#define LW_RWLOCK_STATS_TRACE_ON(stats)         ((stats)->lw_ls_trace_history = TRUE)
+#define LW_RWLOCK_STATS_TRACE_OFF(stats)        ((stats)->lw_ls_trace_history = FALSE)
 
 lw_bool_t
-dd_lwlock_stats_indicate_contention(LW_IN dd_lwlock_stats_t *lwlock_stats);
-void dd_lwlock_stats_reset(LW_INOUT dd_lwlock_stats_t *lwlock_stats);
-void dd_lwlock_stats_str(LW_IN dd_lwlock_stats_t *lwlock_stats,
-                         char *buf,
-                         size_t size,
-                         size_t *len);
+lw_rwlock_stats_indicate_contention(LW_IN lw_lock_stats_t *lw_lock_stats);
 
-#define dd_lwlock_rdlock(_lwlock) \
-        lw_verify(dd_lwlock_lock(_lwlock, DD_LWLOCK_SHARED | DD_LWLOCK_WAIT, NULL, NULL) == 0)
-#define dd_lwlock_tryrdlock(_lwlock) \
-        dd_lwlock_lock(_lwlock, DD_LWLOCK_SHARED | DD_LWLOCK_NOWAIT, NULL, NULL)
-#define dd_lwlock_wrlock(_lwlock) \
-        lw_verify(dd_lwlock_lock(_lwlock, DD_LWLOCK_EXCLUSIVE | DD_LWLOCK_WAIT, NULL, NULL) == 0)
-#define dd_lwlock_trywrlock(_lwlock) \
-        dd_lwlock_lock(_lwlock, DD_LWLOCK_EXCLUSIVE | DD_LWLOCK_NOWAIT, NULL, NULL)
-#define dd_lwlock_rdunlock(_lwlock) dd_lwlock_unlock(_lwlock, FALSE, NULL)
-#define dd_lwlock_wrunlock(_lwlock) dd_lwlock_unlock(_lwlock, TRUE, NULL)
+void lw_rwlock_stats_reset(LW_INOUT lw_lock_stats_t *lw_lock_stats);
+void lw_rwlock_stats_str(LW_IN lw_lock_stats_t *lw_lock_stats,
+                         LW_INOUT char *buf,
+                         LW_IN size_t size,
+                         LW_INOUT size_t *len);
 
-#define dd_lwlock_rdlock_with_stats(_lwlock, _stats) \
-        lw_verify(dd_lwlock_lock(_lwlock, DD_LWLOCK_SHARED | DD_LWLOCK_WAIT, NULL, _stats) == 0)
-#define dd_lwlock_wrlock_with_stats(_lwlock, _stats) \
-        lw_verify(dd_lwlock_lock(_lwlock, DD_LWLOCK_EXCLUSIVE | DD_LWLOCK_WAIT, NULL, _stats) == 0)
-#define dd_lwlock_rdunlock_with_stats(_lwlock, _stats) dd_lwlock_unlock(_lwlock, FALSE, _stats)
-#define dd_lwlock_wrunlock_with_stats(_lwlock, _stats) dd_lwlock_unlock(_lwlock, TRUE, _stats)
+static inline void 
+lw_rwlock_rdlock(LW_INOUT lw_rwlock_t *rwlock)
+{
+        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_SHARED | LW_RWLOCK_WAIT, NULL, NULL) == 0);
+}
+
+static inline int
+lw_rwlock_tryrdlock(LW_INOUT lw_rwlock_t *rwlock) 
+{
+        return lw_rwlock_lock(rwlock, LW_RWLOCK_SHARED | LW_RWLOCK_NOWAIT, NULL, NULL);
+}
+
+static inline void
+lw_rwlock_wrlock(LW_INOUT lw_rwlock_t *rwlock)
+{
+        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_WAIT, NULL, NULL) == 0);
+}
+
+static inline int
+lw_rwlock_trywrlock(LW_INOUT lw_rwlock_t *rwlock)
+{
+        return lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_NOWAIT, NULL, NULL);
+}
+
+static inline void
+lw_rwlock_rdunlock(LW_INOUT lw_rwlock_t *rwlock) 
+{
+    lw_rwlock_unlock(rwlock, FALSE, NULL);
+}
+
+static inline void
+lw_rwlock_wrunlock(LW_INOUT lw_rwlock_t *rwlock) 
+{
+    lw_rwlock_unlock(rwlock, TRUE, NULL);
+}
+
+static inline void
+lw_rwlock_rdlock_with_stats(LW_INOUT lw_rwlock_t *rwlock,
+                            LW_INOUT lw_lock_stats_t *stats)
+{
+        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_SHARED | LW_RWLOCK_WAIT, NULL, stats) == 0);
+}
+
+static inline void
+lw_rwlock_wrlock_with_stats(LW_INOUT lw_rwlock_t *rwlock, 
+                            LW_INOUT lw_lock_stats_t *stats)
+{
+        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_WAIT, NULL, stats) == 0);
+}
+
+static inline void
+lw_rwlock_rdunlock_with_stats(LW_INOUT lw_rwlock_t *rwlock, 
+                              LW_INOUT lw_lock_stats_t *stats) 
+{
+    lw_rwlock_unlock(rwlock, FALSE, stats);
+}
+
+static inline void
+lw_rwlock_wrunlock_with_stats(LW_INOUT lw_rwlock_t *rwlock, 
+                              LW_INOUT lw_lock_stats_t *stats) 
+{
+    lw_rwlock_unlock(rwlock, TRUE, stats);
+}
 
 #ifdef LW_DEBUG
 static inline void
-dd_assert_lwlock_rdlocked(dd_lwlock_t *lock)
+lw_rwlock_assert_rdlocked(LW_IN lw_rwlock_t *rwlock)
 {
-    lw_assert(lock->readers != 0);
+    lw_assert(rwlock->lw_rwlock_readers != 0);
 }
 #else
-#define dd_assert_lwlock_rdlocked(lock) UNUSED_PARAMETER(lock)
+#define lw_rwlock_assert_rdlocked(rwlock) LW_UNUSED_PARAMETER(rwlock)
 #endif
 
 #ifdef LW_DEBUG
 static inline void
-dd_assert_lwlock_wrlocked(dd_lwlock_t *lock)
+lw_rwlock_assert_wrlocked(LW_IN lw_rwlock_t *rwlock)
 {
-    lw_assert(lock->wlocked != 0);
+    lw_assert(rwlock->lw_rwlock_wlocked != 0);
 }
 #else
-#define dd_assert_lwlock_wrlocked(lock) UNUSED_PARAMETER(lock)
+#define lw_rwlock_assert_wrlocked(rwlock) LW_UNUSED_PARAMETER(rwlock)
 #endif
 
 #ifdef LW_DEBUG
 static inline void
-dd_assert_lwlock_locked(dd_lwlock_t *lock)
+lw_rwlock_assert_locked(LW_IN lw_rwlock_t *rwlock)
 {
-    lw_assert((lock->readers != 0) || (lock->wlocked != 0));
-    lw_assert(dd_lwlock_trywrlock(lock) != 0);
+    lw_assert((rwlock->lw_rwlock_readers != 0) || (rwlock->lw_rwlock_wlocked != 0));
+    lw_assert(lw_rwlock_trywrlock(rwlock) != 0);
 }
 #else
-#define dd_assert_lwlock_locked(lock)  UNUSED_PARAMETER(lock)
+#define lw_rwlock_assert_locked(rwlock)  UNUSED_PARAMETER(rwlock)
 #endif
 
 #ifdef LW_DEBUG
 static inline void
-dd_assert_lwlock_unlocked(dd_lwlock_t *lock)
+lw_rwlock_assert_unlocked(LW_IN lw_rwlock_t *rwlock)
 {
-    lw_assert(lock->locked == 0);
+    lw_assert(lock->lw_rwlock_locked == 0);
 }
 #else
-#define dd_assert_lwlock_unlocked(lock) UNUSED_PARAMETER(lock)
+#define lw_rwlock_assert_unlocked(rwlock) UNUSED_PARAMETER(rwlock)
 #endif
 
 static inline lw_bool_t
-dd_lwlock_wrlock_waiters(dd_lwlock_t *lock)
+lw_rwlock_wrlock_waiters(LW_IN lw_rwlock_t *rwlock)
 {
-    return (lock->wait_id != DD_THREAD_WAIT_ID_MAX);
+    return (rwlock->lw_rwlock_waitq != LW_WAITER_ID_MAX);
 }
 
 #endif

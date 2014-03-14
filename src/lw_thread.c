@@ -343,3 +343,9 @@ lw_thread_sync_log_next_line(void)
 
     return lw_sync_log_next_line(tid->lw_tid_sync_log);
 }
+
+lw_bool_t
+lw_thread_wakeup_pending(lw_waiter_t *waiter)
+{
+    return lw_event_wakeup_pending(&waiter->lw_waiter_event, NULL);
+}
