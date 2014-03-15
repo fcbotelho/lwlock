@@ -2,7 +2,9 @@
 #define __LW_ATOMIC_H__
 
 #include "lw_types.h"
+#include "lw_debug.h"
 #include <stdint.h>
+
 #if (defined(AMD64_ASM))  // support for AMD 64 bit assembly
 
 /*

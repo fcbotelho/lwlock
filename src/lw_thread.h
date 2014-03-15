@@ -13,13 +13,13 @@ lw_thread_create(LW_INOUT lw_thread_t *thread,
                  LW_INOUT pthread_attr_t *attr,
                  LW_INOUT lw_thread_run_func_t start_func,
                  LW_INOUT void *arg,
-                 LW_IN char const *name);
+                 LW_IN char *name);
 
 extern int 
 lw_thread_create_detached(LW_INOUT lw_thread_t *thread,
                           LW_INOUT lw_thread_run_func_t start_func,
                           LW_INOUT void *arg,
-                          LW_IN char const *name);
+                          LW_IN char *name);
 /** 
  * Get pthread_id underlying the given lw_thread.
  */

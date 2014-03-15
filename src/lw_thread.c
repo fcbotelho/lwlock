@@ -142,7 +142,6 @@ _lw_thread_start_func(const char *name,
     lw_thread_run_func_t start_func = thargs->lw_ta_start_func;
     void *arg = thargs->lw_ta_arg;
     void *retval;
-    int ret = 0;
 
     /*
      * Free the thread arg structure now that we've cached its contents.
@@ -225,7 +224,7 @@ lw_thread_create(LW_INOUT lw_thread_t *thread,
                  LW_INOUT pthread_attr_t *attr,
                  LW_INOUT lw_thread_run_func_t start_func,
                  LW_INOUT void *arg,
-                 LW_IN char const *name)
+                 LW_IN char *name)
 {
     _lw_thread_arg_t *thargs;
     int ret;
@@ -290,7 +289,7 @@ int
 lw_thread_create_detached(LW_INOUT lw_thread_t *thread,
                           LW_INOUT lw_thread_run_func_t start_func,
                           LW_INOUT void *arg,
-                          LW_IN char const *name)
+                          LW_IN char *name)
 {
     pthread_attr_t attr;
     int rc = 0;

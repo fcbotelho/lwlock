@@ -22,7 +22,7 @@ typedef enum {
     LW_LOCK_TYPE_NONE /* a no-op lock that simulates presence of race */
 } lw_lock_type_t;
 
-static const char *
+static inline const char *
 lw_lock_common_lock_type_description(lw_lock_type_t type) {
     switch(type) {
         case LW_LOCK_TYPE_PMUTEX:
