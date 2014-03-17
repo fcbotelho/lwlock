@@ -1,0 +1,9 @@
+%! style(html): DOC.css
+%! PreProc(html): '^%html% ' ''
+%! PreProc(txt): '^%txt% ' ''
+%! PostProc(html): "&amp;" "&"
+%! PostProc(txt): "&nbsp;" " "
+% The ^ need to be escaped by \
+%!postproc(html):  \^\^(.*?)\^\^  <sup>\1</sup>
+%!postproc(html):  ,,(.*?),,      <sub>\1</sub>
+

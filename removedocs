@@ -1,0 +1,17 @@
+#!/bin/sh
+echo "rm ChangeLog"
+rm ChangeLog
+
+echo "rm *.html"
+rm *.html
+
+echo "rm README"
+rm README
+echo "rm AUTHORS"
+rm AUTHORS
+echo "rm FAQ"
+rm FAQ
+echo "rm NEWS"
+rm NEWS
+echo "rm EXAMPLE"
+rm EXAMPLE

@@ -1,0 +1,18 @@
+News Log
+
+
+%!includeconf: CONFIG.t2t
+
+----------------------------------------
+
+==News for version 1.0==
+
+This first version of the LWLOCk library has support for:
+
+- Light-weight mutexes. There are two versions: (i) one with a 4-byte payload; and (ii) one with a 2-byte payload.
+- Read write locks with a 4-byte payload.
+- Conditional variables with a 4-byte payload.
+
+%!include: FOOTER.t2t
+
+%!include(html): ''GOOGLEANALYTICS.t2t''

@@ -1,0 +1,11 @@
+LWLOCK FAQ
+
+
+%!includeconf: CONFIG.t2t
+
+- When should one use LWLOCK library?
+	- LWLOCKs are efficient for non-contending cases. Hence, if one wants to increase concurrency at a very low memory overhead, then LWLOCK is a good option. It is very easy to customize the light-weight locks to provide different policies for how the wait queue is managed. If there is a lot of contention, then pthread locks are more efficient. Since a good design should avoid contention as much as possible, we have found LWLOCKs to be very practical.
+
+%!include: FOOTER.t2t
+
+%!include(html): ''GOOGLEANALYTICS.t2t''
