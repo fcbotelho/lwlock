@@ -13,5 +13,5 @@ echo "rm FAQ"
 rm FAQ
 echo "rm NEWS"
 rm NEWS
-echo "rm EXAMPLES"
-rm EXAMPLES
+echo "rm EXAMPLE"
+rm EXAMPLE
