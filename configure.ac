@@ -144,5 +144,5 @@ AC_SUBST(CHECK_LIBS)
 AC_SUBST(CHECK_CFLAGS)
 
 AC_CHECK_SPOON
-AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile examples/Makefile man/Makefile lwlock.pc])
+AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile examples/Makefile lwlock.pc])
 AC_OUTPUT
