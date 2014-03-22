@@ -2,8 +2,12 @@
 #define __LW_LOCK_H__
 
 #include "lw_types.h"
-
-typedef struct lw_waiter_domain_s lw_waiter_domain_t;
+#include "lw_mutex.h"
+#include "lw_mutex2b.h"
+#include "lw_cond_var.h"
+#include "lw_lock_common.h"
+#include "lw_lock_stats.h"
+#include "lw_thread.h"
 
 /**
  * Initialization function
@@ -28,10 +32,5 @@ lw_lock_init(lw_bool_t track_sync_events, lw_waiter_domain_t *domain);
 extern void
 lw_lock_shutdown(void);
 
-#include "lw_mutex.h"
-#include "lw_mutex2b.h"
-#include "lw_cond_var.h"
-#include "lw_lock_common.h"
-#include "lw_lock_stats.h"
-#include "lw_thread.h"
+
 #endif /* __LW_LOCK_H__ */
