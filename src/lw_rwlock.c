@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #include "lw_rwlock.h"
 #include "lw_debug.h"
 #include "lw_atomic.h"
@@ -31,8 +40,8 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
     lw_rwlock_t new;
     lw_bool_t exclusive = ((type & LW_RWLOCK_EXCLUSIVE) == LW_RWLOCK_EXCLUSIVE);
     lw_bool_t wait_inline = ((type & LW_RWLOCK_WAIT_DEFERRED) != LW_RWLOCK_WAIT_DEFERRED);
-    lw_uint64_t const tag_val = (type & (LW_RWLOCK_EXCLUSIVE | 
-                                         LW_RWLOCK_SHARED | 
+    lw_uint64_t const tag_val = (type & (LW_RWLOCK_EXCLUSIVE |
+                                         LW_RWLOCK_SHARED |
                                          LW_RWLOCK_UPGRADE));
     lw_assert(!(type & LW_RWLOCK_NOWAIT));
 
@@ -63,7 +72,7 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
         } else if (exclusive &&
                    !new.lw_rwlock_locked &&
                    new.lw_rwlock_waitq == LW_WAITER_ID_MAX) {
-            /* 
+            /*
              * An exclusive lock is granted if not already locked (shared or exclusive)
              * and there are no other waiters.
              */
@@ -77,7 +86,7 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
             lw_assert(waiter != NULL);
             waiter->lw_waiter_event.lw_te_base.lw_be_tag = tag_val;
             lw_assert(waiter->lw_waiter_next == LW_WAITER_ID_MAX);
-            lw_assert(waiter->lw_waiter_id != new.lw_rwlock_waitq); 
+            lw_assert(waiter->lw_waiter_id != new.lw_rwlock_waitq);
             waiter->lw_waiter_next = new.lw_rwlock_waitq;
             new.lw_rwlock_waitq = waiter->lw_waiter_id;
             lw_assert(new.lw_rwlock_waitq != LW_WAITER_ID_MAX);
@@ -94,13 +103,13 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
             lw_waiter_wait(waiter);
             /* on contention, the lock is "transferred" to the blocked threads in FIFO order */
             lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag == tag_val);
-            lw_assert((exclusive && 
-                       rwlock->lw_rwlock_wlocked && 
+            lw_assert((exclusive &&
+                       rwlock->lw_rwlock_wlocked &&
                        rwlock->lw_rwlock_readers == 0) ||
-                      (!exclusive && 
-                       !rwlock->lw_rwlock_wlocked && 
+                      (!exclusive &&
+                       !rwlock->lw_rwlock_wlocked &&
                        rwlock->lw_rwlock_readers > 0));
-        } 
+        }
 
         result = (wait_inline ? 0 : EWOULDBLOCK);
     } else {
@@ -160,7 +169,7 @@ lw_rwlock_lock(LW_INOUT lw_rwlock_t *rwlock,
     return 0;
 }
 
-void 
+void
 lw_rwlock_contention_wait(LW_INOUT lw_rwlock_t *rwlock,
                           LW_IN lw_rwlock_attempt_t type,
                           LW_INOUT lw_waiter_t *waiter)
@@ -171,7 +180,7 @@ lw_rwlock_contention_wait(LW_INOUT lw_rwlock_t *rwlock,
 #else
     LW_UNUSED_PARAMETER(type);
 #endif
-    
+
     lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == NULL);
     waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = rwlock;
 
@@ -181,18 +190,18 @@ lw_rwlock_contention_wait(LW_INOUT lw_rwlock_t *rwlock,
     /* on contention, the lock is "transferred" to the blocked threads in FIFO order */
 #ifdef LW_DEBUG
     lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag == tag_val);
-    lw_assert((exclusive && 
-               rwlock->lw_rwlock_wlocked && 
+    lw_assert((exclusive &&
+               rwlock->lw_rwlock_wlocked &&
                rwlock->lw_rwlock_readers == 0) ||
-              (!exclusive && 
-               !rwlock->lw_rwlock_wlocked && 
+              (!exclusive &&
+               !rwlock->lw_rwlock_wlocked &&
                rwlock->lw_rwlock_readers > 0));
 #endif
 }
 
 #ifdef LW_DEBUG
-/* 
- * This function verifies that wakeup list and waiter list do not have 
+/*
+ * This function verifies that wakeup list and waiter list do not have
  * overlapping elements.
  */
 static void
@@ -212,7 +221,7 @@ lw_rwlock_check_waitq_membership(lw_uint32_t waitq, lw_uint32_t wakeup_list)
 }
 #endif
 
-/* 
+/*
  * Internal function to wake up waiters when unlocking a rwlock. This is called
  * for fair locks. For unfair locks, this is called when transferring the lock to
  * a writer.
@@ -312,7 +321,7 @@ lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
             } else {
                 /* waiter is waiting for exclusive lock */
                 lw_assert(wait_list_count == 1);
-                lw_assert(lw_waiter_from_id(wait_list)->lw_waiter_event.lw_te_base.lw_be_tag != 
+                lw_assert(lw_waiter_from_id(wait_list)->lw_waiter_event.lw_te_base.lw_be_tag !=
                           LW_RWLOCK_SHARED);
                 lw_assert(lw_waiter_from_id(wait_list)->lw_waiter_next == LW_WAITER_ID_MAX);
                 lw_assert(lw_waiter_from_id(wait_list) == waiter);
@@ -508,7 +517,7 @@ lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock)
      * get the lock and the writers need to go back on the wait list of the
      * lock.
      */
-    old = *rwlock;  
+    old = *rwlock;
     do {
         new = old;
         lw_assert(old.lw_rwlock_readers >= 1 && !old.lw_rwlock_wlocked);
@@ -558,7 +567,7 @@ try_rwlock_upgrade_or_release(LW_INOUT lw_rwlock_t *rwlock)
         new = old;
         new.lw_rwlock_readers--;
         if (!new.lw_rwlock_readers) {
-            /* This is the only reader. Upgrade the read lock to a write lock. 
+            /* This is the only reader. Upgrade the read lock to a write lock.
              * Incoming read lock attempts will queue up as waiters.
              */
             new.lw_rwlock_wlocked = 1;
@@ -577,7 +586,7 @@ try_rwlock_upgrade_or_release(LW_INOUT lw_rwlock_t *rwlock)
         while (waiter->lw_waiter_next != LW_WAITER_ID_MAX) { /* Not oldest waiter */
             waiter = lw_waiter_from_id(waiter->lw_waiter_next);
         }
-        
+
         /* Last waiter should always be a writer */
         lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_SHARED);
     }
@@ -599,10 +608,10 @@ lw_rwlock_unlock_contention(LW_INOUT lw_rwlock_t *rwlock,
 
     old = *rwlock;
     if (old.lw_rwlock_unfair && !exclusive) {
-        /* This is an unfair shared lock. 
-         * Handle the case where a reader unlocking an unfair lock contends with 
+        /* This is an unfair shared lock.
+         * Handle the case where a reader unlocking an unfair lock contends with
          * another thread that also grabs the read lock. If we dont handle this case
-         * separately, it could result in a waiter on that lock getting removed 
+         * separately, it could result in a waiter on that lock getting removed
          * from the wait list and getting lost.
          * We upgrade the last reader to a writer and signal the oldest waiter.
          * If some other reader grabs the shared lock before we do the upgrade,
@@ -669,11 +678,11 @@ lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock)
         if (old.lw_rwlock_waitq != LW_WAITER_ID_MAX) {
             /* Have existing waiters. Can't do direct downgrade */
             break;
-        } 
+        }
         new.lw_rwlock_wlocked = 0;
         new.lw_rwlock_readers = 1;
     } while (!lw_uint32_swap(&rwlock->lw_rwlock_val, &old.lw_rwlock_val, new.lw_rwlock_val));
-        
+
     if (new.lw_rwlock_readers == 1) {
         /* Managed to do swap above */
         lw_assert(new.lw_rwlock_waitq == LW_WAITER_ID_MAX);
@@ -684,7 +693,7 @@ lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock)
         lw_assert(new.lw_rwlock_wlocked);
         lw_assert(new.lw_rwlock_waitq != LW_WAITER_ID_MAX);
     }
-        
+
     this_waiter = lw_waiter_get();
     last_waiter = lw_waiter_from_id(old.lw_rwlock_waitq);
     while (last_waiter->lw_waiter_next != LW_WAITER_ID_MAX) {
@@ -697,7 +706,7 @@ lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock)
      * waiter for an async lock on another rwlock? We can do this downgrade
      * without using the waiter by simply doing the wakeup of all qualifying
      * waiters (readers, all or last depending upon fairness).
-     * 
+     *
      * Stuff below is simpler to do but limits the scope of where this feature
      * can be used.
      */
@@ -773,7 +782,7 @@ lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock)
     do {
         new = old;
         if (old.lw_rwlock_waitq != LW_WAITER_ID_MAX) {
-            /* 
+            /*
              * Have more readers or waiter which could be in upgrade
              * itself. Can't grab right away.
              */
@@ -789,7 +798,7 @@ lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock)
             new.lw_rwlock_readers -= 1;
         }
     } while (!lw_uint32_swap(&rwlock->lw_rwlock_val, &old.lw_rwlock_val, new.lw_rwlock_val));
-        
+
     if (new.lw_rwlock_wlocked) {
         /* Managed to do swap above */
         this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = NULL;
