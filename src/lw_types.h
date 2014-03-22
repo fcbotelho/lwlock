@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __LW_TYPES_H__
 #define __LW_TYPES_H__
 
@@ -78,11 +87,11 @@ typedef lw_uint16_t lw_waiter_id_t;
  */
 #define LW_IGNORE_RETURN_VALUE(x) ((void) (x))
 
-/*  
+/*
  * Conversion between pointers and numbers.
- *  
+ *
  * Works for both 32 and 64 bit pointers.
- */     
+ */
 #define LW_PTR_2_NUM(__ptr, __type) ((__type)((uintptr_t)(__ptr)))
 #define LW_NUM_2_PTR(__num, __type) ((__type *)((uintptr_t)(__num)))
 

@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #include "lw_dlist.h"
 #include "lw_debug.h"
 
@@ -32,8 +41,8 @@ void lw_dl_init_elem(LW_INOUT lw_delem_t *elem)
 #endif
 }
 
-void 
-lw_dl_append_at_end(LW_INOUT lw_dlist_t *list, 
+void
+lw_dl_append_at_end(LW_INOUT lw_dlist_t *list,
                     LW_INOUT lw_delem_t *elem)
 {
 
@@ -64,7 +73,7 @@ void *lw_dl_dequeue(LW_INOUT lw_dlist_t *list)
 
     if (elem != NULL) {
 #ifdef LW_DEBUG
-        lw_assert((elem->lw_delem_magic == LW_DL_ON_LIST) && 
+        lw_assert((elem->lw_delem_magic == LW_DL_ON_LIST) &&
                   (elem->lw_delem_list == list));
 #endif
         lw_assert(elem->lw_delem_prev == NULL);

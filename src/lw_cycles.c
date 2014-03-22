@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #include "lw_cycles.h"
 #include "lw_debug.h"
 #include <unistd.h>
@@ -33,8 +42,8 @@ lw_cycles_init(void)
         usec_elapsed -= (1000ULL * 1000 * tv_start.tv_sec) + tv_start.tv_usec;
 
         /*
-         * Avoid divide by 0. 
-         * We tried to sleep for 1 sec above, so use 1000000L if we have to 
+         * Avoid divide by 0.
+         * We tried to sleep for 1 sec above, so use 1000000L if we have to
          * hard-code a value.
          */
         if (usec_elapsed == 0) {

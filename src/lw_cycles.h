@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __LW_CYCLES_H__
 #define __LW_CYCLES_H__
 
@@ -38,31 +47,31 @@ lw_rdtsc(void)
 extern lw_uint32_t lw_cpu_khz;
 void lw_cycles_init(void);
 
-static inline lw_uint64_t __attribute__ ((always_inline))                              
+static inline lw_uint64_t __attribute__ ((always_inline))
 lw_cycle(void)
 {
-    return lw_rdtsc();                                                                   
-}   
-
-static inline lw_uint64_t                     
-lw_cycle_to_ns(LW_IN lw_uint64_t cycles)
-{
-    return (1000 * 1000 * cycles) / lw_cpu_khz;         
-}   
-
-static inline lw_uint64_t                 
-lw_ns_to_cycle(LW_IN lw_uint64_t ns)                             
-{
-    return (ns * lw_cpu_khz) / (1000*1000);
-}   
+    return lw_rdtsc();
+}
 
 static inline lw_uint64_t
-lw_cycle_to_us(LW_IN lw_uint64_t cycles)  
+lw_cycle_to_ns(LW_IN lw_uint64_t cycles)
 {
-    return 1000 * cycles / lw_cpu_khz;                                           
-}   
+    return (1000 * 1000 * cycles) / lw_cpu_khz;
+}
 
-static inline lw_uint64_t                                        
+static inline lw_uint64_t
+lw_ns_to_cycle(LW_IN lw_uint64_t ns)
+{
+    return (ns * lw_cpu_khz) / (1000*1000);
+}
+
+static inline lw_uint64_t
+lw_cycle_to_us(LW_IN lw_uint64_t cycles)
+{
+    return 1000 * cycles / lw_cpu_khz;
+}
+
+static inline lw_uint64_t
 lw_us_to_cycle(LW_IN lw_uint64_t us)
 {
     return (us * lw_cpu_khz) / 1000;
