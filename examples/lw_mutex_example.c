@@ -5,16 +5,11 @@
 #include <stdio.h>
 /* No need to include pthread.h to use lw_lock libray. Including it
  * here in this test program to be able to use pthread_yiled() to
- * increase chance of race 
+ * increase chance of race
  */
-#include <pthread.h> 
-
-#ifdef __APPLE__
+#include <pthread.h>
 #include <sched.h>
 #define cpu_yield() sched_yield()
-#else
-#define cpu_yield() pthread_yield()
-#endif
 
 #define DATA_NUM 5
 #define DATA_MAX_INCREMENT 100
@@ -28,10 +23,10 @@
  * the mutex works, at the end of DATA_MAX_INCREMENT iterations each
  * member of data[] should have a value of DATA_MAX_INCREMENT*THRD_NUM
  * and 'sum' should be DATA_NUM*{n*(n+1)/2} where
- * n=DATA_MAX_INCREMENT*THRD_NUM 
+ * n=DATA_MAX_INCREMENT*THRD_NUM
  */
 lw_uint64_t data[DATA_NUM];
-lw_uint64_t sum; 
+lw_uint64_t sum;
 void *data_lock; // protects data, use void * to be able to use different kinds of locks
 lw_lock_type_t data_lock_type = LW_LOCK_TYPE_NONE;
 
@@ -48,7 +43,7 @@ clear_data(void)
 }
 
 static void
-critical_region(void) 
+critical_region(void)
 {
     lw_uint32_t i;
 
@@ -88,9 +83,9 @@ do_test(void)
 {
     lw_uint32_t i;
     lw_thread_t wr_thrds[THRD_NUM];
-    
-    fprintf(stdout, 
-            "RUNNING TEST (lock type=%s) \n", 
+
+    fprintf(stdout,
+            "RUNNING TEST (lock type=%s) \n",
             lw_lock_common_lock_type_description(data_lock_type));
     fprintf(stdout, "------------------------------\n");
 
@@ -98,10 +93,10 @@ do_test(void)
 
     lw_mutex_lock(&barrier_mutex, NULL);
     for (i = 0; i < THRD_NUM; i++) {
-        lw_verify(lw_thread_create(&wr_thrds[i], 
-                                   NULL, 
-                                   wr_thread_fn, 
-                                   NULL, 
+        lw_verify(lw_thread_create(&wr_thrds[i],
+                                   NULL,
+                                   wr_thread_fn,
+                                   NULL,
                                    "wr_thrd") == 0);
         fprintf(stdout, "%s: created write thread %d\n", __func__, i);
     }
@@ -139,7 +134,7 @@ print_expected_result(void)
 int main(int argc, char **argv)
 {
     /* common init */
-    lw_lock_init(TRUE);
+    lw_lock_init(TRUE, NULL);
     lw_mutex_init(&barrier_mutex);
 
     print_expected_result();
@@ -167,6 +162,6 @@ int main(int argc, char **argv)
 
     /* common shutdown */
     lw_mutex_destroy(&barrier_mutex);
-    lw_lock_shutdown();    
+    lw_lock_shutdown();
     return 0;
 }

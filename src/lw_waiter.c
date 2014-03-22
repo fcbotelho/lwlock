@@ -13,27 +13,20 @@ static lw_waiter_t *
 lw_waiter_domain_from_id_global(LW_INOUT lw_waiter_domain_t *domain,
                                 LW_IN lw_uint32_t id);
 static void
-lw_waiter_domain_free_global(LW_INOUT lw_waiter_domain_t *domain, 
+lw_waiter_domain_free_global(LW_INOUT lw_waiter_domain_t *domain,
                              LW_INOUT lw_waiter_t *waiter);
 
 typedef struct {
-    /* Keep this first */
-    lw_waiter_domain_t     lw_wgd_domain; 
-    
+    lw_waiter_domain_t     lw_wgd_domain; 		/* Keep this first */
     lw_waiter_t            *lw_wgd_waiters[256];
-    
-    /* Number of allocated elements in global_waiters */
-    lw_uint32_t            lw_wgd_waiters_cnt; 
-    
+    lw_uint32_t            lw_wgd_waiters_cnt; 		/* Number of allocated elements in global_waiters */
     lw_dlist_t             lw_wgd_free_list;
-    
-    /* used for cleanup */
-    pthread_key_t          lw_wgd_waiter_key; 
+    pthread_key_t          lw_wgd_waiter_key; 		/* used for cleanup */
 } lw_waiter_global_domain_t;
 
 static lw_waiter_global_domain_t lw_global_waiters_domain;
 
-lw_waiter_domain_t *lw_waiter_global_domain = 
+lw_waiter_domain_t *lw_waiter_global_domain =
     &(lw_global_waiters_domain.lw_wgd_domain);
 
 pthread_mutex_t lw_waiter_global_domain_lock;
@@ -54,12 +47,12 @@ lw_waiter_global_domain_alloc_one_array(LW_INOUT lw_waiter_global_domain_t *gd)
     lw_waiter_t *waiters_row;
     /*
      * TODO: need to create a wrapper around pthread_mutex_t that will be
-     * called lw_pmutex_t and here we should assert that lw_waiter_global_domain_lock 
-     * is held by this thread 
+     * called lw_pmutex_t and here we should assert that lw_waiter_global_domain_lock
+     * is held by this thread
      */
     lw_verify(gd->lw_wgd_waiters_cnt < LW_WAITERS_GLOBAL_SIZE);
-    
-    gd->lw_wgd_waiters[gd->lw_wgd_waiters_cnt] = 
+
+    gd->lw_wgd_waiters[gd->lw_wgd_waiters_cnt] =
         malloc(sizeof(lw_waiter_t) * LW_WAITERS_PER_ARRAY);
 
     waiters_row = gd->lw_wgd_waiters[gd->lw_wgd_waiters_cnt];
@@ -71,7 +64,7 @@ lw_waiter_global_domain_alloc_one_array(LW_INOUT lw_waiter_global_domain_t *gd)
 
         lw_dl_init_elem(&waiter->lw_waiter_event.lw_te_base.lw_be_iface.lw_ei_link);
 
-        lw_dl_append_at_end(&gd->lw_wgd_free_list, 
+        lw_dl_append_at_end(&gd->lw_wgd_free_list,
                             &waiter->lw_waiter_event.lw_te_base.lw_be_iface.lw_ei_link);
     }
     gd->lw_wgd_waiters_cnt++;
@@ -79,10 +72,15 @@ lw_waiter_global_domain_alloc_one_array(LW_INOUT lw_waiter_global_domain_t *gd)
 
 
 void
-lw_waiter_domain_init_global(void)
+lw_waiter_domain_init_global(lw_waiter_domain_t *domain)
 {
     lw_uint32_t i;
 //     lw_verify(sizeof(lw_rwlock_t) == sizeof(lw_uint32_t));
+
+    if (domain != NULL) {
+        lw_waiter_global_domain = domain;
+        return;
+    }
 
     pthread_mutex_init(&lw_waiter_global_domain_lock, NULL);
 
@@ -95,20 +93,20 @@ lw_waiter_domain_init_global(void)
         lw_global_waiters_domain.lw_wgd_waiters[i] = NULL;
     }
     lw_waiter_global_domain_alloc_one_array(&lw_global_waiters_domain);
-    
-    lw_verify(pthread_key_create(&lw_global_waiters_domain.lw_wgd_waiter_key, 
+
+    lw_verify(pthread_key_create(&lw_global_waiters_domain.lw_wgd_waiter_key,
                                  lw_waiter_free) == 0);
 
-    lw_global_waiters_domain.lw_wgd_domain.lw_wd_alloc_waiter = 
+    lw_global_waiters_domain.lw_wgd_domain.lw_wd_alloc_waiter =
         lw_waiter_domain_alloc_global;
 
-    lw_global_waiters_domain.lw_wgd_domain.lw_wd_free_waiter = 
+    lw_global_waiters_domain.lw_wgd_domain.lw_wd_free_waiter =
         lw_waiter_domain_free_global;
 
-    lw_global_waiters_domain.lw_wgd_domain.lw_wd_get_waiter = 
+    lw_global_waiters_domain.lw_wgd_domain.lw_wd_get_waiter =
         lw_waiter_domain_get_global;
 
-    lw_global_waiters_domain.lw_wgd_domain.lw_wd_id2waiter = 
+    lw_global_waiters_domain.lw_wgd_domain.lw_wd_id2waiter =
         lw_waiter_domain_from_id_global;
 
     pthread_mutex_unlock(&lw_waiter_global_domain_lock);
@@ -124,8 +122,8 @@ lw_waiter_dealloc_all(LW_INOUT lw_waiter_global_domain_t *gd)
     lw_waiter_t *waiter;
     /*
      * TODO: need to create a wrapper around pthread_mutex_t that will be
-     * called lw_pmutex_t and here we should assert that lw_waiter_global_domain_lock 
-     * is held by this thread 
+     * called lw_pmutex_t and here we should assert that lw_waiter_global_domain_lock
+     * is held by this thread
      */
     lw_verify(gd->lw_wgd_waiters_cnt != 0);
 
@@ -136,7 +134,7 @@ lw_waiter_dealloc_all(LW_INOUT lw_waiter_global_domain_t *gd)
 
     for (i = 0; i < gd->lw_wgd_waiters_cnt; i++) {
         /*
-         * All the threads that use this domain must have exited at this point. 
+         * All the threads that use this domain must have exited at this point.
          * If not and if they try to access their waiters, there will be trouble.
          */
         free(gd->lw_wgd_waiters[i]);
@@ -153,7 +151,7 @@ lw_waiter_dealloc_all(LW_INOUT lw_waiter_global_domain_t *gd)
 static void
 lw_waiter_clear_global(void)
 {
-    lw_verify(pthread_setspecific(lw_global_waiters_domain.lw_wgd_waiter_key, 
+    lw_verify(pthread_setspecific(lw_global_waiters_domain.lw_wgd_waiter_key,
                                   NULL) == 0);
 }
 
@@ -173,6 +171,10 @@ void
 lw_waiter_domain_shutdown_global(void)
 {
     /* Free the lw_waiter_t for calling thread */
+    if (lw_waiter_global_domain != &(lw_global_waiters_domain.lw_wgd_domain)) {
+        /* Global domain was externally provided. Nothing more to do. */
+        return;
+    }
     lw_waiter_dealloc_global();
     pthread_mutex_lock(&lw_waiter_global_domain_lock);
     lw_waiter_dealloc_all(&lw_global_waiters_domain);
@@ -184,7 +186,7 @@ lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain)
 {
     lw_waiter_t *waiter;
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
-    
+
     pthread_mutex_lock(&lw_waiter_global_domain_lock);
     waiter = lw_dl_dequeue(&gd->lw_wgd_free_list);
     if (waiter == NULL) {
@@ -209,7 +211,7 @@ lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain)
 }
 
 void
-lw_waiter_domain_free_global(LW_INOUT lw_waiter_domain_t *domain, 
+lw_waiter_domain_free_global(LW_INOUT lw_waiter_domain_t *domain,
                              LW_INOUT lw_waiter_t *waiter)
 {
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
@@ -222,7 +224,7 @@ lw_waiter_domain_free_global(LW_INOUT lw_waiter_domain_t *domain,
         lw_thread_event_destroy(&waiter->lw_waiter_event);
         waiter->lw_waiter_initialized = FALSE;
         lw_dl_init_elem(&waiter->lw_waiter_event.lw_te_base.lw_be_iface.lw_ei_link);
-        lw_dl_append_at_end(&gd->lw_wgd_free_list, 
+        lw_dl_append_at_end(&gd->lw_wgd_free_list,
                             &waiter->lw_waiter_event.lw_te_base.lw_be_iface.lw_ei_link);
     }
     pthread_mutex_unlock(&lw_waiter_global_domain_lock);
@@ -244,7 +246,7 @@ lw_waiter_domain_get_global(LW_INOUT lw_waiter_domain_t *domain)
 }
 
 static lw_waiter_t *
-lw_waiter_domain_from_id_global(LW_INOUT lw_waiter_domain_t *domain, 
+lw_waiter_domain_from_id_global(LW_INOUT lw_waiter_domain_t *domain,
                                 LW_IN lw_uint32_t id)
 {
     lw_waiter_t *waiter;
@@ -269,7 +271,7 @@ lw_waiter_remove_from_id_list(LW_INOUT lw_waiter_t *waiter)
 
     next = lw_waiter_from_id(waiter->lw_waiter_next);
     prev = lw_waiter_from_id(waiter->lw_waiter_prev);
-    
+
     if (next != NULL) {
         lw_assert(next->lw_waiter_prev == waiter->lw_waiter_id);
         next->lw_waiter_prev = waiter->lw_waiter_prev;

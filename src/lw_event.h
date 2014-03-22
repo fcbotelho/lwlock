@@ -1,21 +1,13 @@
 #ifndef __LW_EVENT_H__
 #define __LW_EVENT_H__
 
-/*
- *  Copyright(c) 2013 Data Domain, Inc.  All rights reserved.
- *   
- *  DATA DOMAIN CONFIDENTIAL -- This is an unpublished work of Data Domain, Inc.,
- *  and is fully protected under copyright and trade secret laws.  You may not view,
- *  use, disclose, copy, or distribute this file or any information herein except
- *  pursuant to a valid written license from Data Domain.
- */     
-
 #include "lw_types.h"
 #include "lw_dlist.h"
 #include "lw_magic.h"
 #include <time.h>
 #include <sys/time.h>
 #include <pthread.h>
+
 /**
  * Simple binary event. This is meant to be used between 2 threads only, one of
  * which will wait (the owner) and the other will signal.
@@ -43,7 +35,7 @@ struct lw_event_iface_s {
     lw_delem_t                      lw_ei_link;
 #ifdef LW_DEBUG
     lw_magic_t                      lw_ei_magic;
-#endif    
+#endif
     lw_event_signal_func_t          lw_ei_signal;
     lw_event_wait_func_t            lw_ei_wait;
     lw_event_wakeup_pending_func_t  lw_ei_wakeup_pending;
@@ -55,9 +47,9 @@ struct lw_base_event_s {
      * Generic pointer set by external libraries.
      * Used for debugging info.
      */
-    void              *lw_be_wait_src;   
+    void              *lw_be_wait_src;
     /* To be used by libraries using this struct */
-    lw_uint64_t       lw_be_tag; 
+    lw_uint64_t       lw_be_tag;
 };
 
 struct lw_thread_event_s {
@@ -77,7 +69,7 @@ struct lw_thread_event_s {
  * continue.
  */
 static inline void
-lw_event_signal(LW_INOUT lw_event_t _event, 
+lw_event_signal(LW_INOUT lw_event_t _event,
                 LW_INOUT void *arg)
 {
     lw_event_iface_t *event = LW_EVENT_2_IFACE(_event);
@@ -86,7 +78,7 @@ lw_event_signal(LW_INOUT lw_event_t _event,
 #endif
     event->lw_ei_signal(event, arg);
 }
- 
+
 static inline int
 lw_event_timedwait(LW_INOUT lw_event_t _event,
                    LW_INOUT void *arg,
@@ -100,7 +92,7 @@ lw_event_timedwait(LW_INOUT lw_event_t _event,
 }
 
 static inline void
-lw_event_wait(LW_INOUT lw_event_t _event, 
+lw_event_wait(LW_INOUT lw_event_t _event,
               LW_INOUT void *arg)
 {
     int ret = lw_event_timedwait(_event, arg, NULL);
@@ -108,7 +100,7 @@ lw_event_wait(LW_INOUT lw_event_t _event,
 }
 
 static inline lw_bool_t
-lw_event_wakeup_pending(LW_INOUT lw_event_t _event, 
+lw_event_wakeup_pending(LW_INOUT lw_event_t _event,
                         LW_INOUT void *arg)
 {
     lw_event_iface_t *event = LW_EVENT_2_IFACE(_event);
@@ -136,10 +128,10 @@ lw_base_event_init(LW_INOUT lw_base_event_t *base_event,
     base_event->lw_be_tag = LW_MAX_UINT64;
 }
 
-extern void 
+extern void
 lw_thread_event_init(LW_INOUT lw_thread_event_t *thread_event);
 
-extern void 
+extern void
 lw_thread_event_destroy(LW_INOUT lw_thread_event_t *thread_event);
 
 #endif
