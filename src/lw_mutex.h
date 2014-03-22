@@ -2,7 +2,6 @@
 #define __LW_MUTEX_H__
 
 #include "lw_types.h"
-#include "lw_lock_stats.h"
 
 
 /*
@@ -13,7 +12,7 @@
  * doesn't track the current owner. Since we don't need a reader count, we can
  * track the owner and hence do deadlock detection in the version below. If
  * someday we decide to increase lw_rwlock size to be 8 bytes and track the
- * writer thread waiter id as well, this could be considered a more compact 
+ * writer thread waiter id as well, this could be considered a more compact
  * that delivers the same functionality.
  */
 typedef union lw_mutex_u {
@@ -36,16 +35,14 @@ lw_mutex_destroy(LW_INOUT lw_mutex_t *lw_mutex);
 extern lw_int32_t
 lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex);
 
-extern void 
-lw_mutex_lock(LW_INOUT lw_mutex_t *lw_mutex, 
-              LW_INOUT lw_lock_stats_t *lw_lock_stats);
+extern void
+lw_mutex_lock(LW_INOUT lw_mutex_t *lw_mutex);
 
 /* Lock a mutex if not currently owner. Return TRUE if caller was not owner
  * already. FALSE otherwise. In either case, lock is held on return.
  */
 extern lw_bool_t
-lw_mutex_lock_if_not_held(LW_INOUT lw_mutex_t *lw_mutex,
-                          LW_INOUT lw_lock_stats_t *lw_lock_stats);
+lw_mutex_lock_if_not_held(LW_INOUT lw_mutex_t *lw_mutex);
 
 /*
  * Chek if lw_mutex is held by the caller and then unlock.
@@ -57,8 +54,7 @@ lw_mutex_unlock_if_held(LW_INOUT lw_mutex_t *lw_mutex);
  * Unlock an lw_mutex. If there is a waiter, hand over the lock to the oldest
  * waiter.
  */
-void lw_mutex_unlock(LW_INOUT lw_mutex_t *lw_mutex,
-                     LW_IN lw_bool_t trace);
+void lw_mutex_unlock(LW_INOUT lw_mutex_t *lw_mutex);
 
 
 #ifdef LW_DEBUG

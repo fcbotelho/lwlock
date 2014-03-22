@@ -1,8 +1,6 @@
 #include "lw_mutex2b.h"
 #include "lw_mutex.h"
 #include "lw_waiter_intern.h"
-#include "lw_thread.h"
-#include "lw_sync_log.h"
 #include "lw_debug.h"
 #include "lw_atomic.h"
 #include "lw_cycles.h"
@@ -25,10 +23,10 @@ lw_mutex2b_trylock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
 {
     lw_waiter_t *waiter;
     lw_bool_t got_lock;
-    lw_uint16_t lw_mutex2b_old_val; 
+    lw_uint16_t lw_mutex2b_old_val;
     if (*lw_mutex2b != LW_WAITER_ID_MAX) {
         /* Currently held lock. */
-        return EBUSY; 
+        return EBUSY;
     }
     waiter = lw_waiter_get();
 
@@ -38,7 +36,7 @@ lw_mutex2b_trylock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
 
     got_lock = (lw_mutex2b_old_val == LW_WAITER_ID_MAX);
 
-    return (got_lock ? 0 : EBUSY);      
+    return (got_lock ? 0 : EBUSY);
 }
 
 static lw_waiter_t *
@@ -50,7 +48,7 @@ lw_mutex2b_find_oldest_waiter(lw_uint32_t _waitq, lw_uint32_t _owner)
     lw_assert(_waitq < LW_WAITER_ID_MAX);
     lw_assert(_owner < LW_WAITER_ID_MAX);
     lw_assert(waitq != owner);
-    
+
     for (waiter = lw_waiter_from_id(waitq);
          waiter != NULL && waiter->lw_waiter_next != owner;
          waiter = lw_waiter_from_id(waiter->lw_waiter_next)) {
@@ -60,18 +58,11 @@ lw_mutex2b_find_oldest_waiter(lw_uint32_t _waitq, lw_uint32_t _owner)
 }
 
 void
-lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
-                LW_INOUT lw_lock_stats_t *lw_lock_stats)
+lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
 {
     lw_mutex2b_t old;
     lw_waiter_t *waiter;
-    lw_uint64_t tsc_beg;
-    lw_uint64_t tsc_end;
 
-    if (lw_lock_stats == NULL) {
-        lw_lock_stats = lw_lock_stats_get_global();
-    }
-    tsc_beg = lw_rdtsc();
     waiter = lw_waiter_get();
 #ifdef LW_DEBUG
     { /* Deadlock detection. */
@@ -80,8 +71,8 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
          /* Owner cannot be the back of the waiting queue */
          lw_verify(old != waiter->lw_waiter_id);
 
-         lw_waiter_t *const oldest_waiter = 
-             (old == LW_WAITER_ID_MAX) ? 
+         lw_waiter_t *const oldest_waiter =
+             (old == LW_WAITER_ID_MAX) ?
              NULL :
              lw_mutex2b_find_oldest_waiter(old, waiter->lw_waiter_id);
         /* Make the assert below a verify to enable deadlock detection.  Note
@@ -95,7 +86,7 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
          * lw_mutex2b or it isn't really pointing to this waiter anymore. This
          * will get especially tricky if we also start doing async locking for
          * lw_mutex2b. All in all, it is better to just give up on deadlock
-         * detection for extra small-size lw_mutex2b. Use the 4 byte variant 
+         * detection for extra small-size lw_mutex2b. Use the 4 byte variant
          * (which explicitly tracks owner) instead.
          */
         lw_verify(oldest_waiter == NULL ||
@@ -103,7 +94,7 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
                   oldest_waiter->lw_waiter_next != waiter->lw_waiter_id);
     }
 #endif
-       
+
     do {
         old = *lw_mutex2b;
         lw_assert(old != waiter->lw_waiter_id);
@@ -118,42 +109,14 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
          * No need to retry getting the lock.
          */
         lw_mutex2b_assert_locked(lw_mutex2b);
-
-        /* increment contention stats */
-        tsc_end = lw_rdtsc();
-        lw_atomic64_add(&lw_lock_stats->lw_ls_lock_contention_cyc, 
-                        LW_TSC_DIFF(tsc_end, tsc_beg));
-        lw_atomic32_inc(&lw_lock_stats->lw_ls_lock_contentions);
     } else {
         /* Clear the wait_src pointer set earlier */
         waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = NULL;
-        tsc_end = tsc_beg;
-    }
-
-    if (lw_lock_stats->lw_ls_trace_history) {
-        /*
-         * For this to work the thread must be created using 
-         * the lw_thread APIs and the lw_thread API must be
-         * initialized with sync log feature on (that is
-         * call lw_thread_system_init() with TRUE). Otherwise,
-         * we will have a NULL returned from 
-         * lw_thread_sync_log_next_line()
-         */
-        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
-        if (line != NULL) {
-            line->lw_sll_name = lw_lock_stats->lw_ls_name;
-            line->lw_sll_lock_ptr = lw_mutex2b;
-            line->lw_sll_start_tsc = tsc_beg;
-            line->lw_sll_end_tsc = tsc_end;
-            line->lw_sll_primitive_type = LW_SYNC_TYPE_LWMUTEX2B;
-            line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_MUTEX_LOCK;
-        }
     }
 }
 
 void
-lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b, 
-                  LW_IN lw_bool_t trace)
+lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
 {
     lw_mutex2b_t old;
     lw_mutex2b_t new;
@@ -180,41 +143,21 @@ lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
         }
         lw_assert(old == owner_id || /* No waiters OR */
                   /* There is some waiter and */
-                  ((old != LW_WAITER_ID_MAX) && 
+                  ((old != LW_WAITER_ID_MAX) &&
                    /* we have waiter to wake up and */
                    (waiter_to_wake_up != NULL) &&
                    /* that waiter points to owner (fairness) */
-                   (waiter_to_wake_up->lw_waiter_next == owner_id))); 
+                   (waiter_to_wake_up->lw_waiter_next == owner_id)));
     } while (lw_uint16_cmpxchg(lw_mutex2b, old, new) != old);
 
     if (waiter_to_wake_up != NULL) {
-        lw_assert(new == waiter_to_wake_up->lw_waiter_id || 
+        lw_assert(new == waiter_to_wake_up->lw_waiter_id ||
                   new != LW_WAITER_ID_MAX);
         waiter_to_wake_up->lw_waiter_next = LW_WAITER_ID_MAX;
         lw_waiter_wakeup(waiter_to_wake_up, lw_mutex2b);
     } else {
         /* Verify that we really had no waiters. */
         lw_verify(old == owner_id && new == LW_WAITER_ID_MAX);
-    }
-
-    if (trace) {
-        /*
-         * For this to work the thread must be created using 
-         * the lw_thread APIs and the lw_thread API must be
-         * initialized with sync log feature on (that is
-         * call lw_thread_system_init() with TRUE). Otherwise,
-         * we will have a NULL returned from 
-         * lw_thread_sync_log_next_line()
-         */
-        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
-        if (line != NULL) {
-            line->lw_sll_name = NULL;
-            line->lw_sll_lock_ptr = lw_mutex2b;
-            line->lw_sll_start_tsc = lw_rdtsc();
-            line->lw_sll_end_tsc = line->lw_sll_start_tsc;
-            line->lw_sll_primitive_type = LW_SYNC_TYPE_LWMUTEX2B;
-            line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_MUTEX_UNLOCK;
-        }
     }
 }
 
@@ -230,10 +173,10 @@ lw_mutex2b_assert_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b)
     if (old == waiter->lw_waiter_id) {
         return;
     }
-    oldest_waiter = lw_mutex2b_find_oldest_waiter(old, 
+    oldest_waiter = lw_mutex2b_find_oldest_waiter(old,
                                                   waiter->lw_waiter_id);
     lw_assert((oldest_waiter->lw_waiter_next == waiter->lw_waiter_id) &&
-              (oldest_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == 
+              (oldest_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src ==
               lw_mutex2b));
 }
 void
@@ -245,7 +188,7 @@ lw_mutex2b_assert_not_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b)
     waiter = lw_waiter_get();
     old = *lw_mutex2b;
     lw_assert(old != waiter->lw_waiter_id);
-    oldest_waiter = lw_mutex2b_find_oldest_waiter(old, 
+    oldest_waiter = lw_mutex2b_find_oldest_waiter(old,
                                                   waiter->lw_waiter_id);
     /* The walk to get the oldest_waiter is racy since the calling
      * thread is not expected to own the lw_mutex2b. So it is possible
@@ -254,7 +197,7 @@ lw_mutex2b_assert_not_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b)
      * not be waiting on this lw_mutex2b in that case.
      */
     lw_assert((oldest_waiter == NULL) ||
-              (oldest_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src != 
+              (oldest_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src !=
               lw_mutex2b) ||
               (oldest_waiter->lw_waiter_next != waiter->lw_waiter_id));
 }

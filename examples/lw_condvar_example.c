@@ -34,23 +34,22 @@ consumer_func(void *arg)
     int i = 0;
 
     // wait for all threads to be created
-    lw_mutex_lock(&barrier_mutex, NULL);
-    lw_mutex_unlock(&barrier_mutex, TRUE);
+    lw_mutex_lock(&barrier_mutex);
+    lw_mutex_unlock(&barrier_mutex);
 
     fprintf(stdout, "Consumer thread %d starts\n", cons_id);
     for(i = 0;i < LOOP_COUNT; i++) {
-        lw_mutex_lock(&mutex, NULL);
+        lw_mutex_lock(&mutex);
         while(in_idx == out_idx) {
             lw_condvar_wait(&condvar_newdata,
                             &mutex,
-                            LW_LOCK_TYPE_LWMUTEX,
-                            NULL);
+                            LW_LOCK_TYPE_LWMUTEX);
         }
         fprintf(stdout, "Consumer %d consumed: %d\n", cons_id, buff[out_idx]);
         global_sum += buff[out_idx];
         out_idx = (out_idx + 1) % BUFF_SIZE;
         lw_condvar_signal(&condvar_newspace);
-        lw_mutex_unlock(&mutex, TRUE);
+        lw_mutex_unlock(&mutex);
     }
     fprintf(stdout, "Consumer thread %d exits\n", cons_id);
     return NULL;
@@ -63,23 +62,22 @@ producer_func(void *arg)
     int i = 0;
 
     // wait for all threads to be created
-    lw_mutex_lock(&barrier_mutex, NULL);
-    lw_mutex_unlock(&barrier_mutex, TRUE);
+    lw_mutex_lock(&barrier_mutex);
+    lw_mutex_unlock(&barrier_mutex);
 
     fprintf(stdout, "Producer thread %d starts\n", prod_id);
     for(i = 0; i < LOOP_COUNT; i++) {
-        lw_mutex_lock(&mutex, NULL);
+        lw_mutex_lock(&mutex);
         while(((in_idx + 1) % BUFF_SIZE) == out_idx) {
             lw_condvar_wait(&condvar_newspace,
                             &mutex,
-                            LW_LOCK_TYPE_LWMUTEX,
-                            NULL);
+                            LW_LOCK_TYPE_LWMUTEX);
         }
         buff[in_idx] = ++global_count;
         fprintf(stdout, "Producer %d produced: %d\n", prod_id, global_count);
         in_idx = (in_idx + 1) % BUFF_SIZE;
         lw_condvar_signal(&condvar_newdata);
-        lw_mutex_unlock(&mutex, TRUE);
+        lw_mutex_unlock(&mutex);
     }
     fprintf(stdout, "Producer thread %d exits\n", prod_id);
     return NULL;
@@ -90,8 +88,8 @@ int main(int argc, char **argv)
 
     int prod_args[CONSUMERS];
     int cons_args[PRODUCERS];
-    lw_thread_t cons_thrds[CONSUMERS];
-    lw_thread_t prod_thrds[PRODUCERS];
+    pthread_t cons_thrds[CONSUMERS];
+    pthread_t prod_thrds[PRODUCERS];
     int i;
 
     lw_lock_init(TRUE, NULL);
@@ -101,42 +99,40 @@ int main(int argc, char **argv)
     lw_mutex_init(&mutex);
     lw_mutex_init(&barrier_mutex);
 
-    lw_mutex_lock(&barrier_mutex, NULL);
+    lw_mutex_lock(&barrier_mutex);
 
     /* create producer threads */
     for (i = 0; i < PRODUCERS; i++) {
         prod_args[i] = i;
-        lw_verify(lw_thread_create(&prod_thrds[i],
-                                   NULL,
-                                   producer_func,
-                                   &prod_args[i],
-                                   "prod_thrd") == 0);
+        lw_verify(pthread_create(&prod_thrds[i],
+                                 NULL,
+                                 producer_func,
+                                 &prod_args[i]) == 0);
         fprintf(stdout, "created producer thread %d\n", i);
     }
 
     /* create consumer threads */
     for (i = 0; i < CONSUMERS; i++) {
         cons_args[i] = i;
-        lw_verify(lw_thread_create(&cons_thrds[i],
-                                   NULL,
-                                   consumer_func,
-                                   &cons_args[i],
-                                   "cons_thrd") == 0);
+        lw_verify(pthread_create(&cons_thrds[i],
+                                 NULL,
+                                 consumer_func,
+                                 &cons_args[i]) == 0);
         fprintf(stdout, "created consumer thread %d\n", i);
     }
 
-    lw_mutex_unlock(&barrier_mutex, TRUE); // This will allow the threads to actually start working
+    lw_mutex_unlock(&barrier_mutex); // This will allow the threads to actually start working
 
 
     /* join producer threads */
     for (i = 0; i < PRODUCERS; i++) {
-        lw_thread_join(prod_thrds[i], NULL);
+        pthread_join(prod_thrds[i], NULL);
         fprintf(stdout, "joined producer thread %d\n", i);
     }
 
     /* join consumer threads */
     for (i = 0; i < CONSUMERS; i++) {
-        lw_thread_join(cons_thrds[i], NULL);
+        pthread_join(cons_thrds[i], NULL);
         fprintf(stdout, "joined consumer thread %d\n", i);
     }
 
