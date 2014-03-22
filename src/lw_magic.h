@@ -1,10 +1,19 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __LW_MAGIC_H__
 #define __LW_MAGIC_H__
 
 #include "lw_types.h"
 
 /*
- * This include file contains definitions to construct in-memory 
+ * This include file contains definitions to construct in-memory
  * "magic numbers".  These magic numbers provide hints about
  * the contents of memory when other context is unavailable
  * (e.g., when scouring a core file).

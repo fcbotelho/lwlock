@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #include "lw_atomic.h"
 #include "lw_debug.h"
 #include <pthread.h>
@@ -34,8 +43,8 @@ lw_uint16_cmpxchg(LW_INOUT volatile lw_uint16_t *var,
 }
 
 
-lw_uint32_t lw_uint32_cmpxchg(LW_INOUT volatile lw_uint32_t *var, 
-                              LW_IN lw_uint32_t old, 
+lw_uint32_t lw_uint32_cmpxchg(LW_INOUT volatile lw_uint32_t *var,
+                              LW_IN lw_uint32_t old,
                               LW_IN lw_uint32_t new)
 {
     lw_uint32_t ret;
@@ -50,8 +59,8 @@ lw_uint32_t lw_uint32_cmpxchg(LW_INOUT volatile lw_uint32_t *var,
     return ret;
 }
 
-lw_uint64_t lw_uint64_cmpxchg(LW_INOUT volatile lw_uint64_t *var, 
-                              LW_IN lw_uint64_t old, 
+lw_uint64_t lw_uint64_cmpxchg(LW_INOUT volatile lw_uint64_t *var,
+                              LW_IN lw_uint64_t old,
                               LW_IN lw_uint64_t new)
 {
     lw_uint64_t ret;
