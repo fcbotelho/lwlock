@@ -8,13 +8,8 @@
  * increase chance of race 
  */
 #include <pthread.h> 
-
-#ifdef __APPLE__
 #include <sched.h>
 #define cpu_yield() sched_yield()
-#else
-#define cpu_yield() pthread_yield()
-#endif
 
 #define DATA_NUM 5
 #define DATA_MAX_INCREMENT 100
