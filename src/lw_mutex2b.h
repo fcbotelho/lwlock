@@ -2,7 +2,6 @@
 #define __LW_MUTEX2B_H__
 
 #include "lw_types.h"
-#include "lw_lock_stats.h"
 
 /*
  * Lightweight mutex with 2 bytes.
@@ -25,16 +24,14 @@ lw_mutex2b_trylock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
 /* Lock an lw_mutex2b. */
 extern void
-lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
-                  LW_INOUT lw_lock_stats_t *lw_lock_stats);
+lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
 /*
- * Unlock an lwmutex2b. If there is a waiter, hand over the lock 
- * to the oldest waiter. 
+ * Unlock an lwmutex2b. If there is a waiter, hand over the lock
+ * to the oldest waiter.
  * */
 extern void
-lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b, 
-                    LW_IN lw_bool_t trace);
+lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
 #ifdef LW_DEBUG
 extern void lw_mutex2b_assert_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b);

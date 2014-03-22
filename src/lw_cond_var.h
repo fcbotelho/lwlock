@@ -3,7 +3,6 @@
 
 #include "lw_types.h"
 #include "lw_waiter.h"
-#include "lw_lock_stats.h"
 #include "lw_lock_common.h"
 #include "lw_mutex2b.h"
 
@@ -33,14 +32,12 @@ lw_condvar_destroy(LW_INOUT lw_condvar_t *lwcondvar)
 extern void
 lw_condvar_wait(LW_INOUT lw_condvar_t *lwcondvar,
                 LW_INOUT void *_mutex,
-                LW_IN lw_lock_type_t type,
-                LW_INOUT lw_lock_stats_t *stats);
+                LW_IN lw_lock_type_t type);
 
 extern int
 lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
                      LW_INOUT void *_mutex,
                      LW_IN lw_lock_type_t type,
-                     LW_INOUT lw_lock_stats_t *stats,
                      LW_IN struct timespec *abstime);
 
 extern void

@@ -2,16 +2,15 @@
 #define __LW_RWLOCK_H__
 
 #include "lw_types.h"
-#include "lw_lock_stats.h"
 
 
 /**
  * Lightweight read/write locks
  *
- * Has the same functionality as pthread_rwlock, with smaller space (4-bytes) 
- * and faster non-contention performance (only one 32-bit cmpxchg op).  However, 
- * performance under contention is worse than pthread_rwlock. This lock is by default 
- * completely fair, whereas pthread_rwlock sacrifices fairness for higher reader 
+ * Has the same functionality as pthread_rwlock, with smaller space (4-bytes)
+ * and faster non-contention performance (only one 32-bit cmpxchg op).  However,
+ * performance under contention is worse than pthread_rwlock. This lock is by default
+ * completely fair, whereas pthread_rwlock sacrifices fairness for higher reader
  * throughput.
  */
 
@@ -63,22 +62,18 @@ typedef enum lw_rwlock_flags_e {
 int
 lw_rwlock_lock(LW_INOUT lw_rwlock_t *rwlock,
                LW_IN lw_rwlock_attempt_t type,
-               LW_INOUT lw_waiter_t *waiter,
-               LW_INOUT lw_lock_stats_t *lw_lock_stats);
+               LW_INOUT lw_waiter_t *waiter);
 
 void
 lw_rwlock_unlock(LW_INOUT lw_rwlock_t *rwlock,
-                 LW_IN lw_bool_t exclusive,
-                 LW_INOUT lw_lock_stats_t *lw_lock_stats);
+                 LW_IN lw_bool_t exclusive);
 
 /* Downgrade a rwlock from writer lock to reader lock */
 extern void
-lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock,
-                    LW_INOUT lw_lock_stats_t *stats);
+lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock);
 
 extern int
-lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock,
-                  LW_INOUT lw_lock_stats_t *stats);
+lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock);
 
 static inline lw_bool_t
 lw_rwlock_has_waiters(LW_INOUT lw_rwlock_t *rwlock)
@@ -92,88 +87,45 @@ lw_rwlock_has_waiters(LW_INOUT lw_rwlock_t *rwlock)
 
 void lw_rwlock_contention_wait(LW_INOUT lw_rwlock_t *rwlock,
                                LW_IN lw_rwlock_attempt_t type,
-                               LW_INOUT lw_waiter_t *waiter,
-                               LW_INOUT lw_lock_stats_t *lw_lock_stats);
+                               LW_INOUT lw_waiter_t *waiter);
 
 void lw_rwlock_init(LW_INOUT lw_rwlock_t *rwlock, LW_IN lw_rwlock_flags_t flags);
 void lw_rwlock_destroy(LW_INOUT lw_rwlock_t *rwlock);
-void lw_rwlock_stats_init(LW_INOUT lw_lock_stats_t *lw_lock_stats,
-                          LW_IN char *name);
 
-#define LW_RWLOCK_STATS_TRACE_ON(stats)         ((stats)->lw_ls_trace_history = TRUE)
-#define LW_RWLOCK_STATS_TRACE_OFF(stats)        ((stats)->lw_ls_trace_history = FALSE)
-
-lw_bool_t
-lw_rwlock_stats_indicate_contention(LW_IN lw_lock_stats_t *lw_lock_stats);
-
-void lw_rwlock_stats_reset(LW_INOUT lw_lock_stats_t *lw_lock_stats);
-void lw_rwlock_stats_str(LW_IN lw_lock_stats_t *lw_lock_stats,
-                         LW_INOUT char *buf,
-                         LW_IN size_t size,
-                         LW_INOUT size_t *len);
-
-static inline void 
+static inline void
 lw_rwlock_rdlock(LW_INOUT lw_rwlock_t *rwlock)
 {
-        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_SHARED | LW_RWLOCK_WAIT, NULL, NULL) == 0);
+        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_SHARED | LW_RWLOCK_WAIT, NULL) == 0);
 }
 
 static inline int
-lw_rwlock_tryrdlock(LW_INOUT lw_rwlock_t *rwlock) 
+lw_rwlock_tryrdlock(LW_INOUT lw_rwlock_t *rwlock)
 {
-        return lw_rwlock_lock(rwlock, LW_RWLOCK_SHARED | LW_RWLOCK_NOWAIT, NULL, NULL);
+        return lw_rwlock_lock(rwlock, LW_RWLOCK_SHARED | LW_RWLOCK_NOWAIT, NULL);
 }
 
 static inline void
 lw_rwlock_wrlock(LW_INOUT lw_rwlock_t *rwlock)
 {
-        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_WAIT, NULL, NULL) == 0);
+        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_WAIT, NULL) == 0);
 }
 
 static inline int
 lw_rwlock_trywrlock(LW_INOUT lw_rwlock_t *rwlock)
 {
-        return lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_NOWAIT, NULL, NULL);
+        return lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_NOWAIT, NULL);
 }
 
 static inline void
-lw_rwlock_rdunlock(LW_INOUT lw_rwlock_t *rwlock) 
+lw_rwlock_rdunlock(LW_INOUT lw_rwlock_t *rwlock)
 {
-    lw_rwlock_unlock(rwlock, FALSE, NULL);
+    lw_rwlock_unlock(rwlock, FALSE);
 }
 
 static inline void
-lw_rwlock_wrunlock(LW_INOUT lw_rwlock_t *rwlock) 
+lw_rwlock_wrunlock(LW_INOUT lw_rwlock_t *rwlock)
 {
-    lw_rwlock_unlock(rwlock, TRUE, NULL);
-}
-
-static inline void
-lw_rwlock_rdlock_with_stats(LW_INOUT lw_rwlock_t *rwlock,
-                            LW_INOUT lw_lock_stats_t *stats)
-{
-        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_SHARED | LW_RWLOCK_WAIT, NULL, stats) == 0);
-}
-
-static inline void
-lw_rwlock_wrlock_with_stats(LW_INOUT lw_rwlock_t *rwlock, 
-                            LW_INOUT lw_lock_stats_t *stats)
-{
-        lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_WAIT, NULL, stats) == 0);
-}
-
-static inline void
-lw_rwlock_rdunlock_with_stats(LW_INOUT lw_rwlock_t *rwlock, 
-                              LW_INOUT lw_lock_stats_t *stats) 
-{
-    lw_rwlock_unlock(rwlock, FALSE, stats);
-}
-
-static inline void
-lw_rwlock_wrunlock_with_stats(LW_INOUT lw_rwlock_t *rwlock, 
-                              LW_INOUT lw_lock_stats_t *stats) 
-{
-    lw_rwlock_unlock(rwlock, TRUE, stats);
+    lw_rwlock_unlock(rwlock, TRUE);
 }
 
 #ifdef LW_DEBUG
