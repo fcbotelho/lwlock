@@ -12,6 +12,7 @@ liblwlock_la_SOURCES =  lw_lock.h \
                         lw_types.h \
 		   		        lw_mutex.h \
 				        lw_mutex2b.h \
+						lw_rwlock.h \
 				        lw_cond_var.h \
 				        lw_lock_stats.h \
 				        lw_sync_log.h \
@@ -36,7 +37,8 @@ liblwlock_la_SOURCES =  lw_lock.h \
 						lw_cycles.c \
 						lw_dlist.c \
 						lw_event.c \
-						lw_waiter.c
+						lw_waiter.c \
+						lw_rwlock.c
 
 liblwlock_la_LDFLAGS = -version-info 0:0:0
 liblwlock_la_LIBADD  = $(PTHREAD_LIBS)
