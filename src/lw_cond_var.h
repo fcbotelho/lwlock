@@ -18,8 +18,8 @@
 
 /* Light-weight condition variables to go with lw_mutex or any other mutex. */
 typedef struct lw_condvar_u {
-    lw_mutex2b_t lw_condvar_mutex;
-    lw_waiter_id_t lw_condvar_waiter_id_list;
+    lw_mutex2b_t waitq_lock;
+    lw_waiter_id_t waitq;
 } lw_condvar_t;
 
 #define DD_LWCONDVAR_INITIALIZER    { LW_MUTEX2B_INITIALIZER, LW_WAITER_ID_MAX }
@@ -27,15 +27,15 @@ typedef struct lw_condvar_u {
 static inline void
 lw_condvar_init(LW_INOUT lw_condvar_t *lwcondvar)
 {
-    lw_mutex2b_init(&lwcondvar->lw_condvar_mutex);
-    lwcondvar->lw_condvar_waiter_id_list = LW_WAITER_ID_MAX;
+    lw_mutex2b_init(&lwcondvar->waitq_lock);
+    lwcondvar->waitq = LW_WAITER_ID_MAX;
 }
 
 static inline void
 lw_condvar_destroy(LW_INOUT lw_condvar_t *lwcondvar)
 {
-    lw_verify(lwcondvar->lw_condvar_waiter_id_list == LW_WAITER_ID_MAX);
-    lw_mutex2b_destroy(&lwcondvar->lw_condvar_mutex);
+    lw_verify(lwcondvar->waitq == LW_WAITER_ID_MAX);
+    lw_mutex2b_destroy(&lwcondvar->waitq_lock);
 }
 
 extern void
