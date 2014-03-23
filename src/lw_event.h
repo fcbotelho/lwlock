@@ -56,7 +56,6 @@ struct lw_thread_event_s {
     lw_base_event_t  lw_te_base;
     lw_bool_t        lw_te_signal_pending;
     lw_bool_t        lw_te_waiter_waiting;
-    lw_bool_t         lw_te_trace_history;
     pthread_mutex_t  lw_te_mutex;
     pthread_cond_t   lw_te_cond;
 #ifdef LW_DEBUG

@@ -33,5 +33,4 @@ lw_lock_init(lw_bool_t track_sync_events, lw_waiter_domain_t *domain);
 extern void
 lw_lock_shutdown(void);
 
-
 #endif /* __LW_LOCK_H__ */
