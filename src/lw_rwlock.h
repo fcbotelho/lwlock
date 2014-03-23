@@ -3,7 +3,7 @@
 
 #include "lw_types.h"
 #include "lw_lock_stats.h"
-
+#include "lw_waiter.h"
 
 /**
  * Lightweight read/write locks

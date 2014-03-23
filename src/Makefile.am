@@ -3,6 +3,7 @@ include_HEADERS = lw_lock.h \
                   lw_types.h \
 				  lw_mutex.h \
 				  lw_mutex2b.h \
+				  lw_rwlock.h \
 				  lw_cond_var.h \
 				  lw_lock_stats.h \
 				  lw_sync_log.h \
@@ -17,6 +18,7 @@ liblwlock_la_SOURCES =  lw_lock.h \
 				        lw_lock_stats.h \
 				        lw_sync_log.h \
 				        lw_thread.h \
+				        lw_util.h \
 					    lw_atomic.h \
 						lw_compiler.h \
 						lw_cycles.h \

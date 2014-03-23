@@ -14,6 +14,7 @@
 #endif
 #endif
 
+
 #ifndef __GNUC__
 #ifndef __LW_DEBUG_H__
 #define __LW_DEBUG_H__
@@ -75,3 +76,4 @@ static void lw_dummyprintf(const char *format, ...)
             abort(); \
         } \
     } while (0)
+
