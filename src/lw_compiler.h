@@ -20,4 +20,7 @@
 #define lw_predict_unlikely(_x) _x
 #endif
 
+#define LW_STATIC_ASSERT(_exp, _unique) \
+    typedef char static_assert_##_unique[(_exp) ? 1 : -1]
+
 #endif

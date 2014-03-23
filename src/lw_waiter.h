@@ -79,6 +79,12 @@ lw_waiter_from_id(LW_IN lw_uint32_t id)
 }
 
 static inline void
+lw_waiter_assert_src(LW_IN lw_waiter_t *waiter, void *wait_src)
+{
+    lw_assert(waiter->event.base.wait_src == wait_src);
+}
+
+static inline void
 lw_waiter_wait(LW_INOUT lw_waiter_t *waiter)
 {
     lw_event_wait(&waiter->event,
