@@ -1,0 +1,65 @@
+
+Coding style guidelines for the library
+=======================================
+
+The prime rule is always to use good judgement to result in code that is easy to
+understand, maintain and use.
+
+Towards that end, having a certain internal consistency and logic to the code helps. The
+rules below are an attempt to have internal consistency without becoming too overburdened
+by them. The guidelines are suggestions and good judgement and careful thought should be
+behind any deviations from it.
+
+* Max line width: 100 characters. Comments can be longer but don't go over-board. It is
+good to be able to see a whole line fit within screen width and 100 is a safe limit for
+that.
+
+* Indentation: 4 spaces.
+
+* Use const wherever applicable. Helps compiler spot bugs instead of humans.
+
+* Use {} blocking for all if, else, while, for, do while, switch etc constructs. It makes
+logic grouping explicit.
+
+* Declare all variables at the beginning of the block and not inline. This is to play nice
+with pedantic compilers.
+
+* Function definition: It must be in 3 parts. The first line has the function return type
+and qualifiers. The 2nd line has the function name and arguments. If the arguments all
+fit in the 100 char limit, then they can all be in the same line. Otherwise, the 1st
+argument goes with the function name and the rest are one per line indented to match the
+first argument. All arguments must be named. The { } of the function body are on a line by
+themselves. Having them be the 1st character of a line makes it easy to find all functions
+in a file.
+
+Example function declaration based on above --
+
+void
+some_function(IN int arg1,
+              IN char *foo,
+              INOUT void *result)
+{
+    /* stuff here. */
+}
+
+* Naming: The topic with a 100 opinions. For most external APIs, have a suitable prefix.
+For majority of them, this wil be lw_. This applies to both functions as well as data
+structures. 
+
+For fields within structures, a simple descriptive name is enough. Adding a prefix to each
+subfield and sub-struct is not needed and can result in distracting code when reading or
+writing it.
+
+For local variables or function parameters, simple names are sufficient as their scope is
+limited.
+
+* Document the code properly. All API functions and strucutres should have documentation
+detailing the meaning of the arguments/fields and what the function does, its side effects
+and result values. There are formatting rules to this as well as docuemtation is
+auto-generated from these. Add suitable documentation to the logic within the function as
+well wherever it helps illuminate the logic and intent. Especially document things that
+are not being done by the code and there are specific reasons for not doing so: not
+everyone reading the code would be aware of or be able to discern what isn't being done
+and why.
+
+... more to come as we decide the guidelines.
