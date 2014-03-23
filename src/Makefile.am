@@ -4,7 +4,7 @@ include_HEADERS = lw_lock.h \
 				  lw_mutex.h \
 				  lw_mutex2b.h \
 				  lw_rwlock.h \
-				  lw_cond_var.h \
+				  lw_cond_var.h
 
 liblwlock_la_SOURCES =  lw_lock.h \
                         lw_types.h \
