@@ -21,12 +21,12 @@
 typedef struct lw_waiter_domain_s lw_waiter_domain_t;
 
 typedef struct {
-    lw_thread_event_t  lw_waiter_event;     /* Event to synchronize on */
-    lw_waiter_domain_t *lw_waiter_domain;
-    lw_waiter_id_t     lw_waiter_id;        /* Id of this struct */
-    lw_waiter_id_t     lw_waiter_next;      /* Id of next struct when in list */
-    lw_waiter_id_t     lw_waiter_prev;      /* Id of prev struct when in list */
-    lw_bool_t          lw_waiter_initialized; /* Structure is valid and initialized */
+    lw_thread_event_t  event;     /* Event to synchronize on */
+    lw_waiter_domain_t *domain;
+    lw_waiter_id_t     id;        /* Id of this struct */
+    lw_waiter_id_t     next;      /* Id of next struct when in list */
+    lw_waiter_id_t     prev;      /* Id of prev struct when in list */
+    lw_bool_t          initialized; /* Structure is valid and initialized */
 } lw_waiter_t;
 
 typedef lw_waiter_t *
@@ -62,8 +62,7 @@ static inline void
 lw_waiter_free(LW_INOUT void *arg)
 {
     lw_waiter_t *waiter = arg;
-    waiter->lw_waiter_domain->lw_wd_free_waiter(waiter->lw_waiter_domain,
-                                                waiter);
+    waiter->domain->lw_wd_free_waiter(waiter->domain, waiter);
 }
 
 static inline lw_waiter_t *
@@ -82,16 +81,16 @@ lw_waiter_from_id(LW_IN lw_uint32_t id)
 static inline void
 lw_waiter_wait(LW_INOUT lw_waiter_t *waiter)
 {
-    lw_event_wait(&waiter->lw_waiter_event,
-                  waiter->lw_waiter_event.lw_te_base.lw_be_wait_src);
+    lw_event_wait(&waiter->event,
+                  waiter->event.base.wait_src);
 }
 
 static inline int
 lw_waiter_timedwait(LW_INOUT lw_waiter_t *waiter,
                     LW_IN struct timespec *abstime)
 {
-    return lw_event_timedwait(&waiter->lw_waiter_event,
-                              waiter->lw_waiter_event.lw_te_base.lw_be_wait_src,
+    return lw_event_timedwait(&waiter->event,
+                              waiter->event.base.wait_src,
                               abstime);
 }
 
@@ -99,7 +98,7 @@ static inline void
 lw_waiter_wakeup(LW_INOUT lw_waiter_t *waiter,
                  LW_INOUT void *arg)
 {
-    lw_event_signal(&waiter->lw_waiter_event, arg);
+    lw_event_signal(&waiter->event, arg);
 }
 
 static inline void
@@ -117,11 +116,11 @@ lw_waiter_wake_all(LW_INOUT lw_waiter_domain_t *domain,
     }
     while (id < LW_WAITER_ID_MAX) {
         waiter = domain->lw_wd_id2waiter(domain, id);
-        lw_assert(waiter->lw_waiter_initialized);
-        id = waiter->lw_waiter_next;
-        waiter->lw_waiter_next = LW_WAITER_ID_MAX;
-        waiter->lw_waiter_prev = LW_WAITER_ID_MAX;
-        lw_event_signal(&waiter->lw_waiter_event, arg);
+        lw_assert(waiter->initialized);
+        id = waiter->next;
+        waiter->next = LW_WAITER_ID_MAX;
+        waiter->prev = LW_WAITER_ID_MAX;
+        lw_event_signal(&waiter->event, arg);
     }
 }
 

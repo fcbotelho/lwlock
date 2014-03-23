@@ -48,16 +48,16 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
     int result = 0;
 
     lw_assert(waiter == NULL ||
-              (waiter->lw_waiter_next == LW_WAITER_ID_MAX &&
-               waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == NULL));
+              (waiter->next == LW_WAITER_ID_MAX &&
+               waiter->event.base.wait_src == NULL));
 
     old = *rwlock;
     do {
         new = old;
 
         if (waiter != NULL) {
-            /* going around this loop more than once, needs to reset waiter->lw_waiter_next */
-            waiter->lw_waiter_next = LW_WAITER_ID_MAX;
+            /* going around this loop more than once, needs to reset waiter->next */
+            waiter->next = LW_WAITER_ID_MAX;
         }
 
         if (!exclusive &&
@@ -84,25 +84,25 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
                 waiter = lw_waiter_get();
             }
             lw_assert(waiter != NULL);
-            waiter->lw_waiter_event.lw_te_base.lw_be_tag = tag_val;
-            lw_assert(waiter->lw_waiter_next == LW_WAITER_ID_MAX);
-            lw_assert(waiter->lw_waiter_id != new.lw_rwlock_waitq);
-            waiter->lw_waiter_next = new.lw_rwlock_waitq;
-            new.lw_rwlock_waitq = waiter->lw_waiter_id;
+            waiter->event.base.tag = tag_val;
+            lw_assert(waiter->next == LW_WAITER_ID_MAX);
+            lw_assert(waiter->id != new.lw_rwlock_waitq);
+            waiter->next = new.lw_rwlock_waitq;
+            new.lw_rwlock_waitq = waiter->id;
             lw_assert(new.lw_rwlock_waitq != LW_WAITER_ID_MAX);
         }
 
     } while (!lw_uint32_swap(&rwlock->lw_rwlock_val, &old.lw_rwlock_val, new.lw_rwlock_val));
 
     /* block wait if we didn't get the lock */
-    if (waiter != NULL && new.lw_rwlock_waitq == waiter->lw_waiter_id) {
-        lw_assert(new.lw_rwlock_waitq == waiter->lw_waiter_id);
+    if (waiter != NULL && new.lw_rwlock_waitq == waiter->id) {
+        lw_assert(new.lw_rwlock_waitq == waiter->id);
         if (wait_inline) {
-            lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == NULL);
-            waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = rwlock;
+            lw_assert(waiter->event.base.wait_src == NULL);
+            waiter->event.base.wait_src = rwlock;
             lw_waiter_wait(waiter);
             /* on contention, the lock is "transferred" to the blocked threads in FIFO order */
-            lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag == tag_val);
+            lw_assert(waiter->event.base.tag == tag_val);
             lw_assert((exclusive &&
                        rwlock->lw_rwlock_wlocked &&
                        rwlock->lw_rwlock_readers == 0) ||
@@ -181,15 +181,15 @@ lw_rwlock_contention_wait(LW_INOUT lw_rwlock_t *rwlock,
     LW_UNUSED_PARAMETER(type);
 #endif
 
-    lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == NULL);
-    waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = rwlock;
+    lw_assert(waiter->event.base.wait_src == NULL);
+    waiter->event.base.wait_src = rwlock;
 
     lw_assert(waiter != NULL);
 
     lw_waiter_wait(waiter);
     /* on contention, the lock is "transferred" to the blocked threads in FIFO order */
 #ifdef LW_DEBUG
-    lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag == tag_val);
+    lw_assert(waiter->event.base.tag == tag_val);
     lw_assert((exclusive &&
                rwlock->lw_rwlock_wlocked &&
                rwlock->lw_rwlock_readers == 0) ||
@@ -214,9 +214,9 @@ lw_rwlock_check_waitq_membership(lw_uint32_t waitq, lw_uint32_t wakeup_list)
         waiter = lw_waiter_from_id(waitq);
         while (waiter != NULL) {
             lw_verify(waiter != wakeup);
-            waiter = lw_waiter_from_id(waiter->lw_waiter_next);
+            waiter = lw_waiter_from_id(waiter->next);
         }
-        wakeup = lw_waiter_from_id(wakeup->lw_waiter_next);
+        wakeup = lw_waiter_from_id(wakeup->next);
     }
 }
 #endif
@@ -278,12 +278,12 @@ lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
                 wait_list_count = 1;
 
                 waiter = lw_waiter_from_id(new.lw_rwlock_waitq);
-                while (waiter->lw_waiter_next != LW_WAITER_ID_MAX) {
-                    next_waiter = lw_waiter_from_id(waiter->lw_waiter_next);
-                    if (waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_SHARED ||
-                        next_waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_SHARED) {
+                while (waiter->next != LW_WAITER_ID_MAX) {
+                    next_waiter = lw_waiter_from_id(waiter->next);
+                    if (waiter->event.base.tag != LW_RWLOCK_SHARED ||
+                        next_waiter->event.base.tag != LW_RWLOCK_SHARED) {
                         /* exclusive waiter */
-                        wait_list_p = &waiter->lw_waiter_next;
+                        wait_list_p = &waiter->next;
                         wait_list_count = 1;
                     } else {
                         /* shared waiter */
@@ -292,7 +292,7 @@ lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
                     waiter = next_waiter;
                 }
                 wait_list = *wait_list_p;
-                lw_assert(lw_waiter_from_id(wait_list)->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_SHARED ||
+                lw_assert(lw_waiter_from_id(wait_list)->event.base.tag == LW_RWLOCK_SHARED ||
                           wait_list_count == 1);
 
                 *wait_list_p = LW_WAITER_ID_MAX;
@@ -302,16 +302,16 @@ lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
                 }
             }
 
-            if (waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_SHARED) {
+            if (waiter->event.base.tag == LW_RWLOCK_SHARED) {
                 /* waiters are waiting for shared lock */
 #ifdef LW_DEBUG
                 lw_uint32_t count = 0;
                 lw_waiter_id_t id = wait_list;
                 do {
                     waiter = lw_waiter_from_id(id);
-                    lw_verify(waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_SHARED);
+                    lw_verify(waiter->event.base.tag == LW_RWLOCK_SHARED);
                     count++;
-                    id = waiter->lw_waiter_next;
+                    id = waiter->next;
                 } while (id != LW_WAITER_ID_MAX);
                 lw_verify(count == wait_list_count);
 #endif
@@ -321,9 +321,9 @@ lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
             } else {
                 /* waiter is waiting for exclusive lock */
                 lw_assert(wait_list_count == 1);
-                lw_assert(lw_waiter_from_id(wait_list)->lw_waiter_event.lw_te_base.lw_be_tag !=
+                lw_assert(lw_waiter_from_id(wait_list)->event.base.tag !=
                           LW_RWLOCK_SHARED);
-                lw_assert(lw_waiter_from_id(wait_list)->lw_waiter_next == LW_WAITER_ID_MAX);
+                lw_assert(lw_waiter_from_id(wait_list)->next == LW_WAITER_ID_MAX);
                 lw_assert(lw_waiter_from_id(wait_list) == waiter);
                 new.lw_rwlock_wlocked = 1;
             }
@@ -338,9 +338,9 @@ lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
         if (new.lw_rwlock_wlocked) {
             /* Lock was transferred to a write waiter */
             lw_assert(waiter != NULL);
-            lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_SHARED);
+            lw_assert(waiter->event.base.tag != LW_RWLOCK_SHARED);
             lw_assert(wait_list_count == 1);
-            lw_assert(wait_list == waiter->lw_waiter_id);
+            lw_assert(wait_list == waiter->id);
             lw_waiter_wakeup(waiter, rwlock);
         } else {
             lw_waiter_wake_all(lw_waiter_global_domain, wait_list, rwlock);
@@ -383,28 +383,28 @@ lw_rwlock_unlock_unfair_reinsert_waiters(LW_INOUT lw_rwlock_t *rwlock,
 
     lw_assert(oldest_waiter_in_insert_list != NULL);
     curr_waiter = lw_waiter_from_id(rwlock->lw_rwlock_waitq);
-    while (curr_waiter->lw_waiter_next != LW_WAITER_ID_MAX) {
-        lw_assert(curr_waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_SHARED);
-        next_waiter = lw_waiter_from_id(curr_waiter->lw_waiter_next);
-        lw_assert(next_waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_SHARED);
-        if (next_waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_UPGRADE) {
+    while (curr_waiter->next != LW_WAITER_ID_MAX) {
+        lw_assert(curr_waiter->event.base.tag != LW_RWLOCK_SHARED);
+        next_waiter = lw_waiter_from_id(curr_waiter->next);
+        lw_assert(next_waiter->event.base.tag != LW_RWLOCK_SHARED);
+        if (next_waiter->event.base.tag == LW_RWLOCK_UPGRADE) {
             /* One of the new readers went for an upgrade. We have
              * to hang the list before it.
              */
-            lw_verify(next_waiter->lw_waiter_next == LW_WAITER_ID_MAX);
-            lw_assert(next_waiter->lw_waiter_id == curr_waiter->lw_waiter_next);
-            oldest_waiter_in_insert_list->lw_waiter_next = next_waiter->lw_waiter_id;
-            curr_waiter->lw_waiter_next = writer_wait_list_to_insert;
+            lw_verify(next_waiter->next == LW_WAITER_ID_MAX);
+            lw_assert(next_waiter->id == curr_waiter->next);
+            oldest_waiter_in_insert_list->next = next_waiter->id;
+            curr_waiter->next = writer_wait_list_to_insert;
             return;
         }
         curr_waiter = next_waiter;
     }
 
-    if (curr_waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_UPGRADE) {
+    if (curr_waiter->event.base.tag == LW_RWLOCK_UPGRADE) {
         /* First waiter itself wants an upgrade */
-        lw_verify(rwlock->lw_rwlock_waitq == curr_waiter->lw_waiter_id);
-        lw_assert(curr_waiter->lw_waiter_next == LW_WAITER_ID_MAX);
-        oldest_waiter_in_insert_list->lw_waiter_next = curr_waiter->lw_waiter_id;
+        lw_verify(rwlock->lw_rwlock_waitq == curr_waiter->id);
+        lw_assert(curr_waiter->next == LW_WAITER_ID_MAX);
+        oldest_waiter_in_insert_list->next = curr_waiter->id;
         rwlock->lw_rwlock_waitq = writer_wait_list_to_insert;
         return;
     }
@@ -412,18 +412,18 @@ lw_rwlock_unlock_unfair_reinsert_waiters(LW_INOUT lw_rwlock_t *rwlock,
      * front of it. However we have to be careful about a racing
      * upgrade getting ahead of us.
      */
-    lw_assert(curr_waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_EXCLUSIVE);
-    if (lw_uint16_cmpxchg(&curr_waiter->lw_waiter_next,
+    lw_assert(curr_waiter->event.base.tag == LW_RWLOCK_EXCLUSIVE);
+    if (lw_uint16_cmpxchg(&curr_waiter->next,
                           LW_WAITER_ID_MAX,
                           writer_wait_list_to_insert) != LW_WAITER_ID_MAX) {
         /* Failed to swap. Someone else got in front due to an upgrade. */
-        lw_assert(curr_waiter->lw_waiter_next != LW_WAITER_ID_MAX);
-        next_waiter = lw_waiter_from_id(curr_waiter->lw_waiter_next);
-        lw_assert(next_waiter->lw_waiter_next == LW_WAITER_ID_MAX);
-        lw_assert(next_waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_UPGRADE);
+        lw_assert(curr_waiter->next != LW_WAITER_ID_MAX);
+        next_waiter = lw_waiter_from_id(curr_waiter->next);
+        lw_assert(next_waiter->next == LW_WAITER_ID_MAX);
+        lw_assert(next_waiter->event.base.tag == LW_RWLOCK_UPGRADE);
         /* Can do non-atomic update now as there can't be anymore races. */
-        oldest_waiter_in_insert_list->lw_waiter_next = next_waiter->lw_waiter_id;
-        curr_waiter->lw_waiter_next = writer_wait_list_to_insert;
+        oldest_waiter_in_insert_list->next = next_waiter->id;
+        curr_waiter->next = writer_wait_list_to_insert;
     } /* else managed to swap. */
     return;
 }
@@ -450,10 +450,10 @@ lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock)
     lw_assert(old.lw_rwlock_readers == 0 && old.lw_rwlock_wlocked);
     lw_assert(old.lw_rwlock_waitq != LW_WAITER_ID_MAX);
     waiter = lw_waiter_from_id(old.lw_rwlock_waitq);
-    while (waiter->lw_waiter_next != LW_WAITER_ID_MAX) { /* Not oldest waiter */
-        waiter = lw_waiter_from_id(waiter->lw_waiter_next);
+    while (waiter->next != LW_WAITER_ID_MAX) { /* Not oldest waiter */
+        waiter = lw_waiter_from_id(waiter->next);
     }
-    if (waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_SHARED) {
+    if (waiter->event.base.tag != LW_RWLOCK_SHARED) {
         /* Last waiter is a writer. The lock needs to be transferred to
          * to the writer. We can use the lw_rwlock_unlock_fair_contention
          */
@@ -470,24 +470,24 @@ lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock)
     lw_assert(wait_list != LW_WAITER_ID_MAX);
     /* Separate out the writers from the wait list */
     while ((waiter = lw_waiter_from_id(wait_list)) != NULL) {
-        wait_list = waiter->lw_waiter_next;
-        waiter->lw_waiter_next = LW_WAITER_ID_MAX;
-        if (waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_SHARED) {
-            waiter->lw_waiter_next = reader_wait_list;
-            reader_wait_list = waiter->lw_waiter_id;
+        wait_list = waiter->next;
+        waiter->next = LW_WAITER_ID_MAX;
+        if (waiter->event.base.tag == LW_RWLOCK_SHARED) {
+            waiter->next = reader_wait_list;
+            reader_wait_list = waiter->id;
             readers_count++;
         } else {
             /* Waiter is a writer. Remember it in the writer_wait_list
              * to re-add to the lock.
              */
-            lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_EXCLUSIVE); /* Can't be an upgrade waiter */
+            lw_assert(waiter->event.base.tag == LW_RWLOCK_EXCLUSIVE); /* Can't be an upgrade waiter */
             if (oldest_waiting_writer == NULL) {
                 lw_assert(writer_wait_list == LW_WAITER_ID_MAX);
                 oldest_waiting_writer = waiter;
-                writer_wait_list = waiter->lw_waiter_id;
+                writer_wait_list = waiter->id;
             } else {
                 lw_assert(writer_wait_list != LW_WAITER_ID_MAX);
-                oldest_waiting_writer->lw_waiter_next = waiter->lw_waiter_id;
+                oldest_waiting_writer->next = waiter->id;
                 oldest_waiting_writer = waiter;
             }
         }
@@ -500,15 +500,15 @@ lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock)
               (oldest_waiting_writer != NULL &&
                writer_wait_list != LW_WAITER_ID_MAX));
     lw_assert(oldest_waiting_writer == NULL ||
-              oldest_waiting_writer->lw_waiter_next == LW_WAITER_ID_MAX);
+              oldest_waiting_writer->next == LW_WAITER_ID_MAX);
 #ifdef LW_DEBUG
     lw_uint32_t count = 0;
     lw_waiter_id_t id = reader_wait_list;
     do {
         waiter = lw_waiter_from_id(id);
-        lw_verify(waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_SHARED);
+        lw_verify(waiter->event.base.tag == LW_RWLOCK_SHARED);
         count++;
-        id = waiter->lw_waiter_next;
+        id = waiter->next;
     } while (id != LW_WAITER_ID_MAX);
     lw_verify(count == readers_count);
 #endif
@@ -583,12 +583,12 @@ try_rwlock_upgrade_or_release(LW_INOUT lw_rwlock_t *rwlock)
         lw_assert(old.lw_rwlock_readers == 0 && old.lw_rwlock_wlocked);
         lw_assert(old.lw_rwlock_waitq != LW_WAITER_ID_MAX);
         waiter = lw_waiter_from_id(old.lw_rwlock_waitq);
-        while (waiter->lw_waiter_next != LW_WAITER_ID_MAX) { /* Not oldest waiter */
-            waiter = lw_waiter_from_id(waiter->lw_waiter_next);
+        while (waiter->next != LW_WAITER_ID_MAX) { /* Not oldest waiter */
+            waiter = lw_waiter_from_id(waiter->next);
         }
 
         /* Last waiter should always be a writer */
-        lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_SHARED);
+        lw_assert(waiter->event.base.tag != LW_RWLOCK_SHARED);
     }
 #endif
 
@@ -696,12 +696,12 @@ lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock)
 
     this_waiter = lw_waiter_get();
     last_waiter = lw_waiter_from_id(old.lw_rwlock_waitq);
-    while (last_waiter->lw_waiter_next != LW_WAITER_ID_MAX) {
-        last_waiter = lw_waiter_from_id(last_waiter->lw_waiter_next);
+    while (last_waiter->next != LW_WAITER_ID_MAX) {
+        last_waiter = lw_waiter_from_id(last_waiter->next);
     }
     lw_assert(last_waiter != NULL);
-    lw_assert(last_waiter->lw_waiter_next == LW_WAITER_ID_MAX);
-    last_waiter->lw_waiter_next = this_waiter->lw_waiter_id;
+    lw_assert(last_waiter->next == LW_WAITER_ID_MAX);
+    last_waiter->next = this_waiter->id;
     /* XXX: Is this safe to do? What if this thread already was using the
      * waiter for an async lock on another rwlock? We can do this downgrade
      * without using the waiter by simply doing the wakeup of all qualifying
@@ -710,10 +710,10 @@ lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock)
      * Stuff below is simpler to do but limits the scope of where this feature
      * can be used.
      */
-    lw_verify(this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == NULL);
-    lw_verify(this_waiter->lw_waiter_next == LW_WAITER_ID_MAX);
-    this_waiter->lw_waiter_event.lw_te_base.lw_be_tag = LW_RWLOCK_SHARED;
-    this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = rwlock;
+    lw_verify(this_waiter->event.base.wait_src == NULL);
+    lw_verify(this_waiter->next == LW_WAITER_ID_MAX);
+    this_waiter->event.base.tag = LW_RWLOCK_SHARED;
+    this_waiter->event.base.wait_src = rwlock;
     lw_rwlock_unlock(rwlock, TRUE);
     lw_waiter_wait(this_waiter); /* Should wake up right away */
     old = *rwlock;
@@ -731,33 +731,33 @@ lw_rwlock_insert_for_upgrade(LW_INOUT lw_rwlock_t *rwlock,
         lw_assert(!old.lw_rwlock_wlocked);
         lw_assert(old.lw_rwlock_readers > 1 || old.lw_rwlock_waitq != LW_WAITER_ID_MAX);
         last_waiter = lw_waiter_from_id(old.lw_rwlock_waitq);
-        while (last_waiter->lw_waiter_next != LW_WAITER_ID_MAX) {
-            lw_assert(last_waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_UPGRADE);
-            last_waiter = lw_waiter_from_id(last_waiter->lw_waiter_next);
+        while (last_waiter->next != LW_WAITER_ID_MAX) {
+            lw_assert(last_waiter->event.base.tag != LW_RWLOCK_UPGRADE);
+            last_waiter = lw_waiter_from_id(last_waiter->next);
         }
         lw_assert(last_waiter != NULL);
-        if (last_waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_UPGRADE) {
+        if (last_waiter->event.base.tag == LW_RWLOCK_UPGRADE) {
             /* Someone else already waiting for upgrade */
-            this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = NULL;
-            this_waiter->lw_waiter_event.lw_te_base.lw_be_tag = LW_RWLOCK_SHARED; /* Not really needed as tag is scratch space */
+            this_waiter->event.base.wait_src = NULL;
+            this_waiter->event.base.tag = LW_RWLOCK_SHARED; /* Not really needed as tag is scratch space */
             return EPERM;
         }
         /* Try setting next pointer of last waiter.
          * Set the tag first since it needs to be visible to
          * any competing thread that is also trying the upgrade.
          */
-        this_waiter->lw_waiter_event.lw_te_base.lw_be_tag = LW_RWLOCK_UPGRADE;
-        this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = rwlock;
-        if (lw_uint16_cmpxchg(&last_waiter->lw_waiter_next,
+        this_waiter->event.base.tag = LW_RWLOCK_UPGRADE;
+        this_waiter->event.base.wait_src = rwlock;
+        if (lw_uint16_cmpxchg(&last_waiter->next,
                               LW_WAITER_ID_MAX,
-                              this_waiter->lw_waiter_id) != LW_WAITER_ID_MAX) {
+                              this_waiter->id) != LW_WAITER_ID_MAX) {
             /* Failed to swap. Someone else got in for upgrade */
-            lw_assert(last_waiter->lw_waiter_next != LW_WAITER_ID_MAX);
-            last_waiter = lw_waiter_from_id(last_waiter->lw_waiter_next);
-            if (last_waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_UPGRADE) {
+            lw_assert(last_waiter->next != LW_WAITER_ID_MAX);
+            last_waiter = lw_waiter_from_id(last_waiter->next);
+            if (last_waiter->event.base.tag == LW_RWLOCK_UPGRADE) {
                 /* Lost to competing upgrade */
-                this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = NULL;
-                this_waiter->lw_waiter_event.lw_te_base.lw_be_tag = LW_RWLOCK_SHARED; /* Not really needed as tag is scratch space */
+                this_waiter->event.base.wait_src = NULL;
+                this_waiter->event.base.tag = LW_RWLOCK_SHARED; /* Not really needed as tag is scratch space */
                 return EPERM;
             }
         } else {
@@ -777,8 +777,8 @@ lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock)
     lw_assert(!old.lw_rwlock_wlocked);
     lw_assert(old.lw_rwlock_readers != 0);
     this_waiter = lw_waiter_get();
-    lw_assert(this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == NULL);
-    lw_assert(this_waiter->lw_waiter_next == LW_WAITER_ID_MAX);
+    lw_assert(this_waiter->event.base.wait_src == NULL);
+    lw_assert(this_waiter->next == LW_WAITER_ID_MAX);
     do {
         new = old;
         if (old.lw_rwlock_waitq != LW_WAITER_ID_MAX) {
@@ -792,20 +792,20 @@ lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock)
             new.lw_rwlock_wlocked = 1;
             new.lw_rwlock_readers = 0;
         } else {
-            this_waiter->lw_waiter_event.lw_te_base.lw_be_tag = LW_RWLOCK_UPGRADE;
-            this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = rwlock;
-            new.lw_rwlock_waitq = this_waiter->lw_waiter_id;
+            this_waiter->event.base.tag = LW_RWLOCK_UPGRADE;
+            this_waiter->event.base.wait_src = rwlock;
+            new.lw_rwlock_waitq = this_waiter->id;
             new.lw_rwlock_readers -= 1;
         }
     } while (!lw_uint32_swap(&rwlock->lw_rwlock_val, &old.lw_rwlock_val, new.lw_rwlock_val));
 
     if (new.lw_rwlock_wlocked) {
         /* Managed to do swap above */
-        this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = NULL;
+        this_waiter->event.base.wait_src = NULL;
         lw_assert(old.lw_rwlock_waitq == LW_WAITER_ID_MAX);
         lw_assert(new.lw_rwlock_waitq == LW_WAITER_ID_MAX);
         return 0;
-    } else if (new.lw_rwlock_waitq != this_waiter->lw_waiter_id) {
+    } else if (new.lw_rwlock_waitq != this_waiter->id) {
         /* Swap didn't happen */
         int insert;
         lw_assert(new.lw_rwlock_val == old.lw_rwlock_val);
@@ -818,8 +818,8 @@ lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock)
         }
         lw_rwlock_unlock(rwlock, FALSE);
     }
-    lw_assert(this_waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_UPGRADE);
-    lw_assert(this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == rwlock);
+    lw_assert(this_waiter->event.base.tag == LW_RWLOCK_UPGRADE);
+    lw_assert(this_waiter->event.base.wait_src == rwlock);
     lw_waiter_wait(this_waiter);
     old = *rwlock;
     lw_assert(old.lw_rwlock_wlocked);

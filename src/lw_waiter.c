@@ -67,14 +67,14 @@ lw_waiter_global_domain_alloc_one_array(LW_INOUT lw_waiter_global_domain_t *gd)
     waiters_row = gd->lw_wgd_waiters[gd->lw_wgd_waiters_cnt];
     for (i = 0; i < LW_WAITERS_PER_ARRAY; i++) {
         lw_waiter_t *waiter = &(waiters_row[i]);
-        waiter->lw_waiter_id = gd->lw_wgd_waiters_cnt * LW_WAITERS_PER_ARRAY + i;
-        waiter->lw_waiter_initialized = FALSE;
-        waiter->lw_waiter_domain = &gd->lw_wgd_domain;
+        waiter->id = gd->lw_wgd_waiters_cnt * LW_WAITERS_PER_ARRAY + i;
+        waiter->initialized = FALSE;
+        waiter->domain = &gd->lw_wgd_domain;
 
-        lw_dl_init_elem(&waiter->lw_waiter_event.lw_te_base.lw_be_iface.lw_ei_link);
+        lw_dl_init_elem(&waiter->event.base.iface.link);
 
         lw_dl_append_at_end(&gd->lw_wgd_free_list,
-                            &waiter->lw_waiter_event.lw_te_base.lw_be_iface.lw_ei_link);
+                            &waiter->event.base.iface.link);
     }
     gd->lw_wgd_waiters_cnt++;
 }
@@ -210,12 +210,12 @@ lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain)
     pthread_mutex_unlock(&lw_waiter_global_domain_lock);
 
     lw_verify(waiter != NULL);
-    lw_verify(waiter->lw_waiter_initialized == FALSE);
-    lw_thread_event_init(&waiter->lw_waiter_event);
-    waiter->lw_waiter_domain = domain;
-    waiter->lw_waiter_next = LW_WAITER_ID_MAX;
-    waiter->lw_waiter_prev = LW_WAITER_ID_MAX;
-    waiter->lw_waiter_initialized = TRUE;
+    lw_verify(waiter->initialized == FALSE);
+    lw_thread_event_init(&waiter->event);
+    waiter->domain = domain;
+    waiter->next = LW_WAITER_ID_MAX;
+    waiter->prev = LW_WAITER_ID_MAX;
+    waiter->initialized = TRUE;
     return waiter;
 }
 
@@ -227,14 +227,14 @@ lw_waiter_domain_free_global(LW_INOUT lw_waiter_domain_t *domain,
     pthread_mutex_lock(&lw_waiter_global_domain_lock);
     if (gd->lw_wgd_waiters_cnt > 0) { /* If this thread exits after  */
         lw_verify(waiter != NULL);
-        lw_verify(waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == NULL);
-        lw_verify(waiter->lw_waiter_next == LW_WAITER_ID_MAX);
+        lw_verify(waiter->event.base.wait_src == NULL);
+        lw_verify(waiter->next == LW_WAITER_ID_MAX);
 
-        lw_thread_event_destroy(&waiter->lw_waiter_event);
-        waiter->lw_waiter_initialized = FALSE;
-        lw_dl_init_elem(&waiter->lw_waiter_event.lw_te_base.lw_be_iface.lw_ei_link);
+        lw_thread_event_destroy(&waiter->event);
+        waiter->initialized = FALSE;
+        lw_dl_init_elem(&waiter->event.base.iface.link);
         lw_dl_append_at_end(&gd->lw_wgd_free_list,
-                            &waiter->lw_waiter_event.lw_te_base.lw_be_iface.lw_ei_link);
+                            &waiter->event.base.iface.link);
     }
     pthread_mutex_unlock(&lw_waiter_global_domain_lock);
 }
@@ -268,7 +268,7 @@ lw_waiter_domain_from_id_global(LW_INOUT lw_waiter_domain_t *domain,
     lw_assert(id < LW_WAITER_ID_MAX);
     lw_assert((id / LW_WAITERS_PER_ARRAY) < gd->lw_wgd_waiters_cnt);
     waiter = &(gd->lw_wgd_waiters[id/LW_WAITERS_PER_ARRAY][id % LW_WAITERS_PER_ARRAY]);
-    lw_assert(waiter->lw_waiter_domain == domain);
+    lw_assert(waiter->domain == domain);
     return waiter;
 }
 
@@ -278,17 +278,17 @@ lw_waiter_remove_from_id_list(LW_INOUT lw_waiter_t *waiter)
     lw_waiter_t *prev;
     lw_waiter_t *next;
 
-    next = lw_waiter_from_id(waiter->lw_waiter_next);
-    prev = lw_waiter_from_id(waiter->lw_waiter_prev);
+    next = lw_waiter_from_id(waiter->next);
+    prev = lw_waiter_from_id(waiter->prev);
 
     if (next != NULL) {
-        lw_assert(next->lw_waiter_prev == waiter->lw_waiter_id);
-        next->lw_waiter_prev = waiter->lw_waiter_prev;
+        lw_assert(next->prev == waiter->id);
+        next->prev = waiter->prev;
     }
     if (prev != NULL) {
-        lw_assert(prev->lw_waiter_next == waiter->lw_waiter_id);
-        prev->lw_waiter_next = waiter->lw_waiter_next;
+        lw_assert(prev->next == waiter->id);
+        prev->next = waiter->next;
     }
-    waiter->lw_waiter_next = waiter->lw_waiter_prev = LW_WAITER_ID_MAX;
-    waiter->lw_waiter_event.lw_te_base.lw_be_tag = 0;
+    waiter->next = waiter->prev = LW_WAITER_ID_MAX;
+    waiter->event.base.tag = 0;
 }
