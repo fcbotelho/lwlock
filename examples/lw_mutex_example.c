@@ -47,7 +47,7 @@ critical_region(void)
 {
     lw_uint32_t i;
 
-    lw_lock_common_acquire_lock(data_lock, data_lock_type, NULL, NULL);
+    lw_lock_common_acquire_lock(data_lock, data_lock_type, NULL);
 
     for (i = 0; i < DATA_NUM; i++) {
         data[i] += 1;
@@ -59,7 +59,7 @@ critical_region(void)
         sum += data[i];
     }
 
-    lw_lock_common_drop_lock(data_lock, data_lock_type, NULL);
+    lw_lock_common_drop_lock(data_lock, data_lock_type);
 }
 
 static void *
@@ -68,8 +68,8 @@ wr_thread_fn(void *arg)
     lw_uint32_t i;
 
     // wait for all threads to be created
-    lw_mutex_lock(&barrier_mutex, NULL);
-    lw_mutex_unlock(&barrier_mutex, TRUE);
+    lw_mutex_lock(&barrier_mutex);
+    lw_mutex_unlock(&barrier_mutex);
 
     for (i =0; i < DATA_MAX_INCREMENT; i++) {
         critical_region();
@@ -82,7 +82,7 @@ static void
 do_test(void)
 {
     lw_uint32_t i;
-    lw_thread_t wr_thrds[THRD_NUM];
+    pthread_t wr_thrds[THRD_NUM];
 
     fprintf(stdout,
             "RUNNING TEST (lock type=%s) \n",
@@ -91,19 +91,18 @@ do_test(void)
 
     clear_data();
 
-    lw_mutex_lock(&barrier_mutex, NULL);
+    lw_mutex_lock(&barrier_mutex);
     for (i = 0; i < THRD_NUM; i++) {
-        lw_verify(lw_thread_create(&wr_thrds[i],
-                                   NULL,
-                                   wr_thread_fn,
-                                   NULL,
-                                   "wr_thrd") == 0);
+        lw_verify(pthread_create(&wr_thrds[i],
+                                 NULL,
+                                 wr_thread_fn,
+                                 NULL) == 0);
         fprintf(stdout, "%s: created write thread %d\n", __func__, i);
     }
-    lw_mutex_unlock(&barrier_mutex, TRUE); // This will allow the threads to actually start working
+    lw_mutex_unlock(&barrier_mutex); // This will allow the threads to actually start working
 
     for (i = 0; i < THRD_NUM; i++) {
-        lw_thread_join(wr_thrds[i], NULL);
+        pthread_join(wr_thrds[i], NULL);
         fprintf(stdout, "%s: joined write thread %d\n", __func__, i);
     }
 
