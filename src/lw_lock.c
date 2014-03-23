@@ -1,4 +1,3 @@
-
 #include "lw_lock.h"
 #include "lw_atomic.h"
 #include "lw_cycles.h"
