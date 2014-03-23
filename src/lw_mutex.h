@@ -26,11 +26,11 @@
  */
 typedef union lw_mutex_u {
     struct {
-        lw_waiter_id_t lw_mutex_owner;
-        lw_waiter_id_t lw_mutex_waitq; /* Reverse linked FIFO */
+        lw_waiter_id_t owner;
+        lw_waiter_id_t waitq; /* Reverse linked FIFO */
     };
-    volatile lw_uint32_t lw_mutex_val;
-    lw_uint16_t lw_mutex_ow[2];
+    volatile lw_uint32_t val;
+    lw_uint16_t fields_array[2];
 } __attribute__ ((__packed__)) lw_mutex_t;
 
 #define LW_MUTEX_INITIALIZER  { .lw_mutex_ow = { LW_WAITER_ID_MAX, LW_WAITER_ID_MAX} }

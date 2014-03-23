@@ -27,22 +27,22 @@ typedef union lw_rwlock_u {
     struct {
         union {
             struct {
-                lw_uint16_t lw_rwlock_unfair  : 1;
-                lw_uint16_t lw_rwlock_wlocked : 1;
-                lw_uint16_t lw_rwlock_readers : 14;
+                lw_uint16_t unfair  : 1;
+                lw_uint16_t wlocked : 1;
+                lw_uint16_t readers : 14;
             };
             struct {
-                lw_uint16_t lw_rwlock_flags : 1;
-                lw_uint16_t lw_rwlock_locked : 15;
+                lw_uint16_t flags : 1;
+                lw_uint16_t locked : 15;
             };
         };
-        lw_waiter_id_t lw_rwlock_waitq;
+        lw_waiter_id_t waitq;
     };
-    volatile lw_uint32_t lw_rwlock_val;
+    volatile lw_uint32_t val;
     struct {
-        lw_uint16_t lw_rwlock_flags : 1;
-        lw_uint16_t lw_rwlock_locked : 15;
-        lw_waiter_id_t lw_rwlock_waitq;
+        lw_uint16_t flags : 1;
+        lw_uint16_t locked : 15;
+        lw_waiter_id_t waitq;
     } lw_rwlock_init;
 } __attribute__ ((__packed__)) lw_rwlock_t;
 
@@ -65,7 +65,7 @@ typedef enum lw_rwlock_flags_e {
 #define LW_RWLOCK_INIT(_f)  \
 { .lw_rwlock_init = { .lw_rwlock_flags = _f, \
                       .lw_rwlock_locked = 0, \
-                      .lw_rwlock_waitq = LW_WAITER_ID_MAX } }
+                      .waitq = LW_WAITER_ID_MAX } }
 #define LW_RWLOCK_INITIALIZER  LW_RWLOCK_INIT(LW_RWLOCK_DEFAULT)
 
 int
@@ -88,8 +88,8 @@ static inline lw_bool_t
 lw_rwlock_has_waiters(LW_INOUT lw_rwlock_t *rwlock)
 {
     lw_rwlock_t old;
-    old.lw_rwlock_val = rwlock->lw_rwlock_val;
-    return (old.lw_rwlock_waitq != LW_WAITER_ID_MAX);
+    old.val = rwlock->val;
+    return (old.waitq != LW_WAITER_ID_MAX);
 }
 
 #define lw_rwlock_async_done(waiter)    lw_thread_wakeup_pending(waiter)
@@ -181,7 +181,7 @@ lw_rwlock_assert_unlocked(LW_IN lw_rwlock_t *rwlock)
 static inline lw_bool_t
 lw_rwlock_wrlock_waiters(LW_IN lw_rwlock_t *rwlock)
 {
-    return (rwlock->lw_rwlock_waitq != LW_WAITER_ID_MAX);
+    return (rwlock->waitq != LW_WAITER_ID_MAX);
 }
 
 #endif
