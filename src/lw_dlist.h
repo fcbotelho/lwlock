@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __LW_DLIST_H__
 #define __LW_DLIST_H__
 
@@ -8,7 +17,7 @@
  */
 
 #define LW_DL_DBG_BADELEM   ((lw_delem_t *)0xdeadbeef)
-#define LW_DL_DBG_BADLIST   ((lw_dlist_t *)0xfeedface) 
+#define LW_DL_DBG_BADLIST   ((lw_dlist_t *)0xfeedface)
 
 typedef enum {
     LW_DL_ON_LIST     = LW_MAGIC(0x1102), /**< lw_delem_t value when an element is on a list */
@@ -29,8 +38,8 @@ typedef struct {
     void *lw_delem_prev;    /**< Pointer to the previous element in the list */
 #ifdef LW_DEBUG
     lw_dlist_t *lw_delem_list;
-    lw_dl_magic_t lw_delem_magic; 
-#endif    
+    lw_dl_magic_t lw_delem_magic;
+#endif
 } lw_delem_t;
 
 
@@ -75,8 +84,8 @@ extern void lw_dl_init_elem(LW_INOUT lw_delem_t *elem);
  * @param list (i/o) the list to which the element is to be appended.
  * @param elem (i/o) the list element to be inserted.
  */
-extern void 
-lw_dl_append_at_end(LW_INOUT lw_dlist_t *list, 
+extern void
+lw_dl_append_at_end(LW_INOUT lw_dlist_t *list,
                     LW_INOUT lw_delem_t *elem);
 
 /**
