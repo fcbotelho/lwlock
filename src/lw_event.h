@@ -41,34 +41,31 @@ typedef lw_bool_t (*lw_event_wakeup_pending_func_t)(lw_event_t event, void *arg)
 #define LW_EVENT_MAGIC      LW_MAGIC(0x959)
 
 struct lw_event_iface_s {
-    lw_delem_t                      lw_ei_link;
+    lw_delem_t                      link;
 #ifdef LW_DEBUG
-    lw_magic_t                      lw_ei_magic;
+    lw_magic_t                      magic;
 #endif
-    lw_event_signal_func_t          lw_ei_signal;
-    lw_event_wait_func_t            lw_ei_wait;
-    lw_event_wakeup_pending_func_t  lw_ei_wakeup_pending;
+    lw_event_signal_func_t          signal;
+    lw_event_wait_func_t            wait;
+    lw_event_wakeup_pending_func_t  wakeup_pending;
 };
 
 struct lw_base_event_s {
-    lw_event_iface_t  lw_be_iface; /* Keep first */
-    /*
-     * Generic pointer set by external libraries.
-     * Used for debugging info.
-     */
-    void              *lw_be_wait_src;
-    /* To be used by libraries using this struct */
-    lw_uint64_t       lw_be_tag;
+    lw_event_iface_t  iface;    /* Keep first */
+    void              *wait_src;/* Generic pointer set by external libraries.
+                                 * Used for debugging info.
+                                 */
+    lw_uint64_t       tag;      /* To be used by libraries using this struct */
 };
 
 struct lw_thread_event_s {
-    lw_base_event_t  lw_te_base;
-    lw_bool_t        lw_te_signal_pending;
-    lw_bool_t        lw_te_waiter_waiting;
-    pthread_mutex_t  lw_te_mutex;
-    pthread_cond_t   lw_te_cond;
+    lw_base_event_t  base;
+    lw_bool_t        signal_pending;
+    lw_bool_t        waiter_waiting;
+    pthread_mutex_t  mutex;
+    pthread_cond_t   cond;
 #ifdef LW_DEBUG
-    void             *lw_te_tid;
+    void             *tid;
 #endif
 };
 
@@ -82,9 +79,9 @@ lw_event_signal(LW_INOUT lw_event_t _event,
 {
     lw_event_iface_t *event = LW_EVENT_2_IFACE(_event);
 #ifdef LW_DEBUG
-    lw_assert(event->lw_ei_magic == LW_EVENT_MAGIC);
+    lw_assert(event->magic == LW_EVENT_MAGIC);
 #endif
-    event->lw_ei_signal(event, arg);
+    event->signal(event, arg);
 }
 
 static inline int
@@ -94,9 +91,9 @@ lw_event_timedwait(LW_INOUT lw_event_t _event,
 {
     lw_event_iface_t *event = LW_EVENT_2_IFACE(_event);
 #ifdef LW_DEBUG
-    lw_asserta(event->lw_ei_magic == LW_EVENT_MAGIC);
+    lw_asserta(event->magic == LW_EVENT_MAGIC);
 #endif
-    return event->lw_ei_wait(event, arg, abstime);
+    return event->wait(event, arg, abstime);
 }
 
 static inline void
@@ -113,9 +110,9 @@ lw_event_wakeup_pending(LW_INOUT lw_event_t _event,
 {
     lw_event_iface_t *event = LW_EVENT_2_IFACE(_event);
 #ifdef LW_DEBUG
-    lw_assert(event->lw_ei_magic == LW_EVENT_MAGIC);
+    lw_assert(event->magic == LW_EVENT_MAGIC);
 #endif
-    return event->lw_ei_wakeup_pending(event, arg);
+    return event->wakeup_pending(event, arg);
 }
 static inline void
 lw_base_event_init(LW_INOUT lw_base_event_t *base_event,
@@ -123,17 +120,17 @@ lw_base_event_init(LW_INOUT lw_base_event_t *base_event,
                    LW_INOUT lw_event_wait_func_t wait,
                    LW_INOUT  lw_event_wakeup_pending_func_t wakeup_pending)
 {
-    lw_dl_init_elem(&base_event->lw_be_iface.lw_ei_link);
+    lw_dl_init_elem(&base_event->iface.link);
 
 #ifdef LW_DEBUG
-    base_event->lw_be_iface.lw_ei_magic = LW_EVENT_MAGIC;
+    base_event->iface.magic = LW_EVENT_MAGIC;
 #endif
 
-    base_event->lw_be_iface.lw_ei_signal = signal;
-    base_event->lw_be_iface.lw_ei_wait = wait;
-    base_event->lw_be_iface.lw_ei_wakeup_pending = wakeup_pending;
-    base_event->lw_be_wait_src = NULL;
-    base_event->lw_be_tag = LW_MAX_UINT64;
+    base_event->iface.signal = signal;
+    base_event->iface.wait = wait;
+    base_event->iface.wakeup_pending = wakeup_pending;
+    base_event->wait_src = NULL;
+    base_event->tag = LW_MAX_UINT64;
 }
 
 extern void

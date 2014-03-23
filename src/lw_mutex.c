@@ -44,7 +44,7 @@ lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex)
     }
     lw_assert(old.lw_mutex_waitq == LW_WAITER_ID_MAX);
     waiter = lw_waiter_get();
-    new.lw_mutex_owner = waiter->lw_waiter_id;
+    new.lw_mutex_owner = waiter->id;
     new.lw_mutex_waitq = LW_WAITER_ID_MAX;
 
     lw_mutex_old_val = lw_uint32_cmpxchg(&lw_mutex->lw_mutex_val,
@@ -52,7 +52,7 @@ lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex)
                                           new.lw_mutex_val);
 
     got_lock = (lw_mutex_old_val == old.lw_mutex_val);
-    lw_assert(!got_lock || lw_mutex->lw_mutex_owner == waiter->lw_waiter_id);
+    lw_assert(!got_lock || lw_mutex->lw_mutex_owner == waiter->id);
     return (got_lock ? 0 : EBUSY);
 }
 
@@ -65,36 +65,36 @@ lw_mutex_lock(LW_INOUT lw_mutex_t *lw_mutex)
     lw_waiter_t *waiter;
 
     waiter = lw_waiter_get();
-    lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == NULL);
-    lw_assert(waiter->lw_waiter_next == LW_WAITER_ID_MAX);
-    lw_assert(waiter->lw_waiter_prev == LW_WAITER_ID_MAX);
+    lw_assert(waiter->event.base.wait_src == NULL);
+    lw_assert(waiter->next == LW_WAITER_ID_MAX);
+    lw_assert(waiter->prev == LW_WAITER_ID_MAX);
     old = *lw_mutex;
     do {
         new = old;
         if (old.lw_mutex_owner == LW_WAITER_ID_MAX) {
             /* Currently unlocked. */
             lw_assert(old.lw_mutex_waitq == LW_WAITER_ID_MAX);
-            new.lw_mutex_owner = waiter->lw_waiter_id;
-            waiter->lw_waiter_next = LW_WAITER_ID_MAX;
-            waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = NULL;
+            new.lw_mutex_owner = waiter->id;
+            waiter->next = LW_WAITER_ID_MAX;
+            waiter->event.base.wait_src = NULL;
         } else {
-            lw_verify(old.lw_mutex_owner != waiter->lw_waiter_id);
-            waiter->lw_waiter_next = old.lw_mutex_waitq;
-            waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = lw_mutex;
-            new.lw_mutex_waitq = waiter->lw_waiter_id;
+            lw_verify(old.lw_mutex_owner != waiter->id);
+            waiter->next = old.lw_mutex_waitq;
+            waiter->event.base.wait_src = lw_mutex;
+            new.lw_mutex_waitq = waiter->id;
         }
     } while (!lw_uint32_swap(&lw_mutex->lw_mutex_val,
                              &old.lw_mutex_val,
                              new.lw_mutex_val));
 
-    if (new.lw_mutex_owner != waiter->lw_waiter_id) {
+    if (new.lw_mutex_owner != waiter->id) {
         /* Did not get lock. Must wait */
-        lw_assert(new.lw_mutex_waitq == waiter->lw_waiter_id);
+        lw_assert(new.lw_mutex_waitq == waiter->id);
         lw_waiter_wait(waiter);
         /* The thread waking this up will also transfer the lock to it.
          * No need to retry getting the lock.
          */
-        lw_verify(lw_mutex->lw_mutex_owner == waiter->lw_waiter_id);
+        lw_verify(lw_mutex->lw_mutex_owner == waiter->id);
     }
 }
 
@@ -106,7 +106,7 @@ lw_mutex_lock_if_not_held(LW_INOUT lw_mutex_t *lw_mutex)
     lw_waiter_t *waiter = lw_waiter_get();
     old.lw_mutex_val = lw_mutex->lw_mutex_val;
     if (old.lw_mutex_owner == LW_WAITER_ID_MAX ||
-        old.lw_mutex_owner != waiter->lw_waiter_id) {
+        old.lw_mutex_owner != waiter->id) {
         /* Lock not held by caller. */
         retval = TRUE;
     } else {
@@ -124,7 +124,7 @@ lw_mutex_unlock_if_held(LW_INOUT lw_mutex_t *lw_mutex)
     lw_waiter_t *waiter = lw_waiter_get();
     old.lw_mutex_val = lw_mutex->lw_mutex_val;
 
-    if (old.lw_mutex_owner == waiter->lw_waiter_id) {
+    if (old.lw_mutex_owner == waiter->id) {
         /* Lock held by caller. */
         lw_assert(old.lw_mutex_owner != LW_WAITER_ID_MAX);
         lw_mutex_unlock(lw_mutex);
@@ -138,7 +138,7 @@ lw_mutex_setup_prev_id_pointers(LW_INOUT lw_mutex_t *lw_mutex,
 {
     lw_waiter_t *waiter;
     lw_waiter_t *next_waiter;
-    lw_waiter_id_t waiter_id = id;
+    id_t waiter_id = id;
 
     LW_UNUSED_PARAMETER(lw_mutex); /* Only used to check wait_src */
     lw_assert(lastwaiterp != NULL);
@@ -149,14 +149,14 @@ lw_mutex_setup_prev_id_pointers(LW_INOUT lw_mutex_t *lw_mutex,
 
     lw_assert(waiter_id < LW_WAITER_ID_MAX);
     waiter = lw_waiter_from_id(waiter_id);
-    lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == lw_mutex);
-    while (waiter->lw_waiter_next != LW_WAITER_ID_MAX) {
-        next_waiter = lw_waiter_from_id(waiter->lw_waiter_next);
-        lw_assert(next_waiter->lw_waiter_prev == LW_WAITER_ID_MAX ||
-                  next_waiter->lw_waiter_prev == waiter->lw_waiter_id);
-        next_waiter->lw_waiter_prev = waiter->lw_waiter_id;
+    lw_assert(waiter->event.base.wait_src == lw_mutex);
+    while (waiter->next != LW_WAITER_ID_MAX) {
+        next_waiter = lw_waiter_from_id(waiter->next);
+        lw_assert(next_waiter->prev == LW_WAITER_ID_MAX ||
+                  next_waiter->prev == waiter->id);
+        next_waiter->prev = waiter->id;
         waiter = next_waiter;
-        lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == lw_mutex);
+        lw_assert(waiter->event.base.wait_src == lw_mutex);
     }
     *lastwaiterp = waiter;
     return;
@@ -172,15 +172,15 @@ lw_mutex_unlock(LW_INOUT lw_mutex_t *lw_mutex)
 
     old.lw_mutex_val = lw_mutex->lw_mutex_val;
     waiter = lw_waiter_get();
-    lw_verify(old.lw_mutex_owner == waiter->lw_waiter_id); /* Enforce posix semantics */
+    lw_verify(old.lw_mutex_owner == waiter->id); /* Enforce posix semantics */
     do {
         new = old;
         lw_mutex_setup_prev_id_pointers(lw_mutex,
                                         old.lw_mutex_waitq,
                                         &waiter_to_wake_up);
         if (waiter_to_wake_up != NULL) {
-            new.lw_mutex_owner = waiter_to_wake_up->lw_waiter_id;
-            if (new.lw_mutex_waitq == waiter_to_wake_up->lw_waiter_id) {
+            new.lw_mutex_owner = waiter_to_wake_up->id;
+            if (new.lw_mutex_waitq == waiter_to_wake_up->id) {
                 /* This is the only waiter */
                 new.lw_mutex_waitq = LW_WAITER_ID_MAX;
             }
@@ -194,8 +194,8 @@ lw_mutex_unlock(LW_INOUT lw_mutex_t *lw_mutex)
 
     if (waiter_to_wake_up != NULL) {
         lw_waiter_remove_from_id_list(waiter_to_wake_up);
-        lw_assert(new.lw_mutex_owner == waiter_to_wake_up->lw_waiter_id);
-        lw_assert(new.lw_mutex_waitq != waiter_to_wake_up->lw_waiter_id);
+        lw_assert(new.lw_mutex_owner == waiter_to_wake_up->id);
+        lw_assert(new.lw_mutex_waitq != waiter_to_wake_up->id);
         lw_waiter_wakeup(waiter_to_wake_up, lw_mutex);
     } else {
         lw_assert(new.lw_mutex_waitq == LW_WAITER_ID_MAX);
@@ -211,7 +211,7 @@ lw_mutex_assert_locked(lw_mutex_t *lw_mutex)
 {
     lw_waiter_t *waiter;
     waiter = lw_waiter_get();
-    lw_assert(lw_mutex->lw_mutex_owner == waiter->lw_waiter_id);
+    lw_assert(lw_mutex->lw_mutex_owner == waiter->id);
 }
 
 void
@@ -219,7 +219,7 @@ lw_mutex_assert_not_locked(lw_mutex_t *lw_mutex)
 {
     lw_waiter_t *waiter;
     waiter = lw_waiter_get();
-    lw_assert(lw_mutex->lw_mutex_owner != waiter->lw_waiter_id);
+    lw_assert(lw_mutex->lw_mutex_owner != waiter->id);
 }
 #endif
 
