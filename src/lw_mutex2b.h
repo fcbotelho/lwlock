@@ -1,8 +1,16 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __LW_MUTEX2B_H__
 #define __LW_MUTEX2B_H__
 
 #include "lw_types.h"
-#include "lw_lock_stats.h"
 
 /*
  * Lightweight mutex with 2 bytes.
@@ -25,16 +33,14 @@ lw_mutex2b_trylock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
 /* Lock an lw_mutex2b. */
 extern void
-lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b,
-                  LW_INOUT lw_lock_stats_t *lw_lock_stats);
+lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
 /*
- * Unlock an lwmutex2b. If there is a waiter, hand over the lock 
- * to the oldest waiter. 
+ * Unlock an lwmutex2b. If there is a waiter, hand over the lock
+ * to the oldest waiter.
  * */
 extern void
-lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b, 
-                    LW_IN lw_bool_t trace);
+lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
 #ifdef LW_DEBUG
 extern void lw_mutex2b_assert_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b);

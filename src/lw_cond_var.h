@@ -1,9 +1,17 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __LW_COND_VAR_H__
 #define __LW_COND_VAR_H__
 
 #include "lw_types.h"
 #include "lw_waiter.h"
-#include "lw_lock_stats.h"
 #include "lw_lock_common.h"
 #include "lw_mutex2b.h"
 
@@ -33,14 +41,12 @@ lw_condvar_destroy(LW_INOUT lw_condvar_t *lwcondvar)
 extern void
 lw_condvar_wait(LW_INOUT lw_condvar_t *lwcondvar,
                 LW_INOUT void *_mutex,
-                LW_IN lw_lock_type_t type,
-                LW_INOUT lw_lock_stats_t *stats);
+                LW_IN lw_lock_type_t type);
 
 extern int
 lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
                      LW_INOUT void *_mutex,
                      LW_IN lw_lock_type_t type,
-                     LW_INOUT lw_lock_stats_t *stats,
                      LW_IN struct timespec *abstime);
 
 extern void

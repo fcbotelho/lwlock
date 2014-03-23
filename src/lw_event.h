@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __LW_EVENT_H__
 #define __LW_EVENT_H__
 
@@ -56,7 +65,6 @@ struct lw_thread_event_s {
     lw_base_event_t  lw_te_base;
     lw_bool_t        lw_te_signal_pending;
     lw_bool_t        lw_te_waiter_waiting;
-    lw_bool_t         lw_te_trace_history;
     pthread_mutex_t  lw_te_mutex;
     pthread_cond_t   lw_te_cond;
 #ifdef LW_DEBUG

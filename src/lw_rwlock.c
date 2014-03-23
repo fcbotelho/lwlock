@@ -1,6 +1,13 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #include "lw_rwlock.h"
-#include "lw_thread.h"
-#include "lw_sync_log.h"
 #include "lw_debug.h"
 #include "lw_atomic.h"
 #include "lw_cycles.h"
@@ -24,78 +31,20 @@ lw_rwlock_destroy(LW_INOUT lw_rwlock_t *rwlock)
     lw_verify(rwlock->lw_rwlock_waitq == LW_WAITER_ID_MAX);
 }
 
-void
-lw_rwlock_stats_init(LW_INOUT lw_lock_stats_t *lw_lock_stats,
-                     LW_IN char *name)
-{
-    lw_lock_stats->lw_ls_trace_history = 1;
-    lw_lock_stats->lw_ls_name = name;
-    lw_rwlock_stats_reset(lw_lock_stats);
-}
-
-lw_bool_t
-lw_rwlock_stats_indicate_contention(LW_IN lw_lock_stats_t *lw_lock_stats)
-{
-    lw_uint64_t lc = lw_atomic32_read(&lw_lock_stats->lw_ls_lock_contentions);
-    lw_uint64_t lct = lw_atomic64_read(&lw_lock_stats->lw_ls_lock_contention_cyc);
-    lw_uint64_t uc = lw_atomic32_read(&lw_lock_stats->lw_ls_unlock_contentions);
-    lw_uint64_t uct = lw_atomic64_read(&lw_lock_stats->lw_ls_unlock_contention_cyc);
-    return (lc != 0 || lct != 0 || uc != 0 || uct != 0);
-}
-
-void
-lw_rwlock_stats_reset(LW_INOUT lw_lock_stats_t *lw_lock_stats)
-{
-    lw_atomic32_set(&lw_lock_stats->lw_ls_lock_contentions, 0);
-    lw_atomic32_set(&lw_lock_stats->lw_ls_unlock_contentions, 0);
-    lw_atomic64_set(&lw_lock_stats->lw_ls_lock_contention_cyc, 0);
-    lw_atomic64_set(&lw_lock_stats->lw_ls_unlock_contention_cyc, 0);
-}
-
-void
-lw_rwlock_stats_str(LW_IN lw_lock_stats_t *lw_lock_stats,
-                    LW_INOUT char *buf,
-                    LW_IN size_t size,
-                    LW_INOUT size_t *len)
-{
-    lw_uint64_t lc = lw_atomic32_read(&lw_lock_stats->lw_ls_lock_contentions);
-    lw_uint64_t lct = lw_atomic64_read(&lw_lock_stats->lw_ls_lock_contention_cyc);
-    lw_uint64_t uc = lw_atomic32_read(&lw_lock_stats->lw_ls_unlock_contentions);
-    lw_uint64_t uct = lw_atomic64_read(&lw_lock_stats->lw_ls_unlock_contention_cyc);
-
-    lct = lw_cycle_to_ms(lct);
-    uct = lw_cycle_to_ms(uct);
-    lw_int32_t buf_overflow = lw_printbuf(buf, 
-                                          size, 
-                                          len, 
-                                          "%10llu(%6llu.%03llu sec) %10llu(%6llu.%03llu sec)\n",
-                                          lc, 
-                                          lct / 1000, 
-                                          lct % 1000,
-                                          uc, 
-                                          uct / 1000, 
-                                          uct % 1000);
-    lw_verify(buf_overflow >= 0); 
-}
-
 static int
 lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
                           LW_IN lw_rwlock_attempt_t type,
-                          LW_INOUT lw_waiter_t *waiter,
-                          LW_INOUT lw_lock_stats_t *lw_lock_stats)
+                          LW_INOUT lw_waiter_t *waiter)
 {
     lw_rwlock_t old;
     lw_rwlock_t new;
     lw_bool_t exclusive = ((type & LW_RWLOCK_EXCLUSIVE) == LW_RWLOCK_EXCLUSIVE);
     lw_bool_t wait_inline = ((type & LW_RWLOCK_WAIT_DEFERRED) != LW_RWLOCK_WAIT_DEFERRED);
-    lw_uint64_t const tag_val = (type & (LW_RWLOCK_EXCLUSIVE | 
-                                         LW_RWLOCK_SHARED | 
+    lw_uint64_t const tag_val = (type & (LW_RWLOCK_EXCLUSIVE |
+                                         LW_RWLOCK_SHARED |
                                          LW_RWLOCK_UPGRADE));
     lw_assert(!(type & LW_RWLOCK_NOWAIT));
-    lw_verify(lw_lock_stats != NULL);
 
-    lw_uint64_t tsc_beg = lw_rdtsc(); 
-    lw_uint64_t tsc_end;
     int result = 0;
 
     lw_assert(waiter == NULL ||
@@ -123,7 +72,7 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
         } else if (exclusive &&
                    !new.lw_rwlock_locked &&
                    new.lw_rwlock_waitq == LW_WAITER_ID_MAX) {
-            /* 
+            /*
              * An exclusive lock is granted if not already locked (shared or exclusive)
              * and there are no other waiters.
              */
@@ -137,7 +86,7 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
             lw_assert(waiter != NULL);
             waiter->lw_waiter_event.lw_te_base.lw_be_tag = tag_val;
             lw_assert(waiter->lw_waiter_next == LW_WAITER_ID_MAX);
-            lw_assert(waiter->lw_waiter_id != new.lw_rwlock_waitq); 
+            lw_assert(waiter->lw_waiter_id != new.lw_rwlock_waitq);
             waiter->lw_waiter_next = new.lw_rwlock_waitq;
             new.lw_rwlock_waitq = waiter->lw_waiter_id;
             lw_assert(new.lw_rwlock_waitq != LW_WAITER_ID_MAX);
@@ -154,52 +103,16 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
             lw_waiter_wait(waiter);
             /* on contention, the lock is "transferred" to the blocked threads in FIFO order */
             lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag == tag_val);
-            lw_assert((exclusive && 
-                       rwlock->lw_rwlock_wlocked && 
+            lw_assert((exclusive &&
+                       rwlock->lw_rwlock_wlocked &&
                        rwlock->lw_rwlock_readers == 0) ||
-                      (!exclusive && 
-                       !rwlock->lw_rwlock_wlocked && 
+                      (!exclusive &&
+                       !rwlock->lw_rwlock_wlocked &&
                        rwlock->lw_rwlock_readers > 0));
-        } 
-        lw_atomic32_inc(&lw_lock_stats->lw_ls_lock_contentions);
-
-        /* increment contention stats */
-        tsc_end = lw_rdtsc();
-        lw_atomic64_add(&lw_lock_stats->lw_ls_lock_contention_cyc, 
-                        LW_TSC_DIFF(tsc_end, tsc_beg));
+        }
         result = (wait_inline ? 0 : EWOULDBLOCK);
     } else {
-        tsc_end = tsc_beg;
         result = 0;
-    }
-
-     if (lw_lock_stats->lw_ls_trace_history) {
-        /*
-         * For this to work the thread must be created using 
-         * the lw_thread APIs and the lw_thread API must be
-         * initialized with sync log feature on (that is
-         * call lw_thread_system_init() with TRUE). Otherwise,
-         * we will have a NULL returned from 
-         * lw_thread_sync_log_next_line()
-         */
-        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
-        if (line != NULL) {
-            line->lw_sll_name = lw_lock_stats->lw_ls_name;
-            line->lw_sll_lock_ptr = rwlock;
-            line->lw_sll_start_tsc = tsc_beg;
-            line->lw_sll_end_tsc = tsc_end;
-            if (exclusive) {
-                line->lw_sll_primitive_type = LW_SYNC_TYPE_LWRWLOCK_WR;
-                line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_RWLOCK_WRLOCK;
-            } else {
-                line->lw_sll_primitive_type = LW_SYNC_TYPE_LWRWLOCK_RD;
-                line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_RWLOCK_RDLOCK;
-            }
-            line->lw_sll_specific_data[0] = (lw_uint64_t)new.lw_rwlock_waitq;
-            line->lw_sll_specific_data[1] = (lw_uint64_t)result;
-            line->lw_sll_specific_data[2] = (lw_uint64_t)old.lw_rwlock_val;
-            line->lw_sll_specific_data[3] = (lw_uint64_t)new.lw_rwlock_val;
-        }
     }
 
     return result;
@@ -208,8 +121,7 @@ lw_rwlock_lock_contention(LW_INOUT lw_rwlock_t *rwlock,
 int
 lw_rwlock_lock(LW_INOUT lw_rwlock_t *rwlock,
                LW_IN lw_rwlock_attempt_t type,
-               LW_INOUT lw_waiter_t *waiter,
-               LW_INOUT lw_lock_stats_t *lw_lock_stats)
+               LW_INOUT lw_waiter_t *waiter)
 {
     lw_rwlock_t old;
     lw_rwlock_t new;
@@ -221,10 +133,6 @@ lw_rwlock_lock(LW_INOUT lw_rwlock_t *rwlock,
     /* Cannot be an async wait if the attempt is non-waiting (trylock) */
     lw_assert(!(non_blocking && (type & LW_RWLOCK_WAIT_DEFERRED) == LW_RWLOCK_WAIT_DEFERRED));
 
-    if (lw_lock_stats == NULL) {
-        lw_lock_stats = lw_lock_stats_get_global();
-    }
- 
     old.lw_rwlock_val = rwlock->lw_rwlock_val;
     do {
         new = old;
@@ -252,46 +160,19 @@ lw_rwlock_lock(LW_INOUT lw_rwlock_t *rwlock,
 
         } else {
             /* Can't acquire lock, and caller wants to block wait. */
-            return lw_rwlock_lock_contention(rwlock, type, waiter, lw_lock_stats);
+            return lw_rwlock_lock_contention(rwlock, type, waiter);
         }
 
     } while (!lw_uint32_swap(&rwlock->lw_rwlock_val, &old.lw_rwlock_val, new.lw_rwlock_val));
 
 
-    if (lw_lock_stats->lw_ls_trace_history) {
-        /*
-         * For this to work the thread must be created using 
-         * the lw_thread APIs and the lw_thread API must be
-         * initialized with sync log feature on (that is
-         * call lw_thread_system_init() with TRUE). Otherwise,
-         * we will have a NULL returned from 
-         * lw_thread_sync_log_next_line()
-         */
-        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
-        if (line != NULL) {
-            line->lw_sll_name = lw_lock_stats->lw_ls_name;
-            line->lw_sll_lock_ptr = rwlock;
-            line->lw_sll_start_tsc = lw_rdtsc();
-            line->lw_sll_end_tsc = line->lw_sll_start_tsc;
-            if (exclusive) {
-                line->lw_sll_primitive_type = LW_SYNC_TYPE_LWRWLOCK_WR;
-                line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_RWLOCK_WRLOCK;
-            } else {
-                line->lw_sll_primitive_type = LW_SYNC_TYPE_LWRWLOCK_RD;
-                line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_RWLOCK_RDLOCK;
-                line->lw_sll_specific_data[1] = (lw_uint64_t)new.lw_rwlock_readers;
-            }
-            line->lw_sll_specific_data[0] = (lw_uint64_t)new.lw_rwlock_waitq;
-        }
-    }
     return 0;
 }
 
-void 
+void
 lw_rwlock_contention_wait(LW_INOUT lw_rwlock_t *rwlock,
                           LW_IN lw_rwlock_attempt_t type,
-                          LW_INOUT lw_waiter_t *waiter,
-                          LW_INOUT lw_lock_stats_t *lw_lock_stats)
+                          LW_INOUT lw_waiter_t *waiter)
 {
 #ifdef LW_DEBUG
     lw_bool_t const exclusive = ((type & LW_RWLOCK_EXCLUSIVE) == LW_RWLOCK_EXCLUSIVE);
@@ -299,36 +180,27 @@ lw_rwlock_contention_wait(LW_INOUT lw_rwlock_t *rwlock,
 #else
     LW_UNUSED_PARAMETER(type);
 #endif
-    
-    if (lw_lock_stats == NULL) {
-        lw_lock_stats = lw_lock_stats_get_global();
-    }
     lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == NULL);
     waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = rwlock;
 
-    lw_uint64_t tsc_beg = lw_rdtsc(); 
     lw_assert(waiter != NULL);
 
     lw_waiter_wait(waiter);
     /* on contention, the lock is "transferred" to the blocked threads in FIFO order */
 #ifdef LW_DEBUG
     lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag == tag_val);
-    lw_assert((exclusive && 
-               rwlock->lw_rwlock_wlocked && 
+    lw_assert((exclusive &&
+               rwlock->lw_rwlock_wlocked &&
                rwlock->lw_rwlock_readers == 0) ||
-              (!exclusive && 
-               !rwlock->lw_rwlock_wlocked && 
+              (!exclusive &&
+               !rwlock->lw_rwlock_wlocked &&
                rwlock->lw_rwlock_readers > 0));
 #endif
-    /* increment contention stats */
-    lw_uint64_t tsc_end = lw_rdtsc();
-    lw_atomic64_add(&lw_lock_stats->lw_ls_lock_contention_cyc, 
-                    LW_TSC_DIFF(tsc_end, tsc_beg));
 }
 
 #ifdef LW_DEBUG
-/* 
- * This function verifies that wakeup list and waiter list do not have 
+/*
+ * This function verifies that wakeup list and waiter list do not have
  * overlapping elements.
  */
 static void
@@ -348,15 +220,14 @@ lw_rwlock_check_waitq_membership(lw_uint32_t waitq, lw_uint32_t wakeup_list)
 }
 #endif
 
-/* 
+/*
  * Internal function to wake up waiters when unlocking a rwlock. This is called
  * for fair locks. For unfair locks, this is called when transferring the lock to
  * a writer.
  */
 static void
 lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
-                                 LW_IN lw_bool_t exclusive,
-                                 LW_INOUT lw_lock_stats_t *lw_lock_stats)
+                                 LW_IN lw_bool_t exclusive)
 {
     lw_rwlock_t old;
     lw_rwlock_t new;
@@ -365,8 +236,6 @@ lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
     lw_uint32_t wait_list_count = 0;
     lw_waiter_id_t wait_list = LW_WAITER_ID_MAX;
     lw_waiter_id_t *wait_list_p = NULL;
-
-    lw_uint64_t tsc_beg = lw_rdtsc(); 
 
     /* Threads waiting for the lock are appended to the waiter list. We Scan
      * through the waiter list looking for all threads that can be woken up.
@@ -451,7 +320,7 @@ lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
             } else {
                 /* waiter is waiting for exclusive lock */
                 lw_assert(wait_list_count == 1);
-                lw_assert(lw_waiter_from_id(wait_list)->lw_waiter_event.lw_te_base.lw_be_tag != 
+                lw_assert(lw_waiter_from_id(wait_list)->lw_waiter_event.lw_te_base.lw_be_tag !=
                           LW_RWLOCK_SHARED);
                 lw_assert(lw_waiter_from_id(wait_list)->lw_waiter_next == LW_WAITER_ID_MAX);
                 lw_assert(lw_waiter_from_id(wait_list) == waiter);
@@ -476,12 +345,6 @@ lw_rwlock_unlock_fair_contention(LW_INOUT lw_rwlock_t *rwlock,
             lw_waiter_wake_all(lw_waiter_global_domain, wait_list, rwlock);
         }
     }
-
-    /* increment contention stats */
-    lw_uint64_t tsc_end = lw_rdtsc();
-    lw_atomic64_add(&lw_lock_stats->lw_ls_lock_contention_cyc, 
-                    LW_TSC_DIFF(tsc_end, tsc_beg));
-    lw_atomic32_inc(&lw_lock_stats->lw_ls_unlock_contentions);
 }
 
 /* Downgrade exclusive lock to a shared lock, reset wait list.
@@ -565,8 +428,7 @@ lw_rwlock_unlock_unfair_reinsert_waiters(LW_INOUT lw_rwlock_t *rwlock,
 }
 
 static void
-lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock,
-                                   LW_INOUT lw_lock_stats_t *lw_lock_stats)
+lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock)
 {
     lw_rwlock_t old;
     lw_rwlock_t new;
@@ -576,8 +438,6 @@ lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock,
     lw_waiter_id_t reader_wait_list = LW_WAITER_ID_MAX;
     lw_waiter_id_t writer_wait_list = LW_WAITER_ID_MAX;
     lw_waiter_id_t wait_list = LW_WAITER_ID_MAX;
-
-    lw_uint64_t tsc_beg = lw_rdtsc(); 
 
     /* This function is only called when holding writer lock.It transfers the
      * lock to the oldest waiter(s). If the oldest waiter is a writer, the lock
@@ -596,7 +456,7 @@ lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock,
         /* Last waiter is a writer. The lock needs to be transferred to
          * to the writer. We can use the lw_rwlock_unlock_fair_contention
          */
-        lw_rwlock_unlock_fair_contention(rwlock, TRUE, lw_lock_stats);
+        lw_rwlock_unlock_fair_contention(rwlock, TRUE);
         return;
     }
 
@@ -656,7 +516,7 @@ lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock,
      * get the lock and the writers need to go back on the wait list of the
      * lock.
      */
-    old = *rwlock;  
+    old = *rwlock;
     do {
         new = old;
         lw_assert(old.lw_rwlock_readers >= 1 && !old.lw_rwlock_wlocked);
@@ -682,12 +542,6 @@ lw_rwlock_unlock_unfair_contention(LW_INOUT lw_rwlock_t *rwlock,
     } while (!lw_uint32_swap(&rwlock->lw_rwlock_val, &old.lw_rwlock_val, new.lw_rwlock_val));
 
     lw_waiter_wake_all(lw_waiter_global_domain, reader_wait_list, rwlock);
-
-    /* increment contention stats */
-    lw_uint64_t tsc_end = lw_rdtsc();
-    lw_atomic64_add(&lw_lock_stats->lw_ls_lock_contention_cyc, 
-                    LW_TSC_DIFF(tsc_end, tsc_beg));
-    lw_atomic32_inc(&lw_lock_stats->lw_ls_unlock_contentions);
 }
 
 static lw_bool_t
@@ -712,7 +566,7 @@ try_rwlock_upgrade_or_release(LW_INOUT lw_rwlock_t *rwlock)
         new = old;
         new.lw_rwlock_readers--;
         if (!new.lw_rwlock_readers) {
-            /* This is the only reader. Upgrade the read lock to a write lock. 
+            /* This is the only reader. Upgrade the read lock to a write lock.
              * Incoming read lock attempts will queue up as waiters.
              */
             new.lw_rwlock_wlocked = 1;
@@ -731,7 +585,7 @@ try_rwlock_upgrade_or_release(LW_INOUT lw_rwlock_t *rwlock)
         while (waiter->lw_waiter_next != LW_WAITER_ID_MAX) { /* Not oldest waiter */
             waiter = lw_waiter_from_id(waiter->lw_waiter_next);
         }
-        
+
         /* Last waiter should always be a writer */
         lw_assert(waiter->lw_waiter_event.lw_te_base.lw_be_tag != LW_RWLOCK_SHARED);
     }
@@ -746,21 +600,17 @@ try_rwlock_upgrade_or_release(LW_INOUT lw_rwlock_t *rwlock)
  */
 static void
 lw_rwlock_unlock_contention(LW_INOUT lw_rwlock_t *rwlock,
-                            LW_IN lw_bool_t exclusive,
-                            LW_INOUT lw_lock_stats_t *lw_lock_stats)
+                            LW_IN lw_bool_t exclusive)
 {
     lw_rwlock_t old;
     lw_bool_t upgrade_res;
 
-    if (lw_lock_stats == NULL) {
-        lw_lock_stats = lw_lock_stats_get_global();
-    }
     old = *rwlock;
     if (old.lw_rwlock_unfair && !exclusive) {
-        /* This is an unfair shared lock. 
-         * Handle the case where a reader unlocking an unfair lock contends with 
+        /* This is an unfair shared lock.
+         * Handle the case where a reader unlocking an unfair lock contends with
          * another thread that also grabs the read lock. If we dont handle this case
-         * separately, it could result in a waiter on that lock getting removed 
+         * separately, it could result in a waiter on that lock getting removed
          * from the wait list and getting lost.
          * We upgrade the last reader to a writer and signal the oldest waiter.
          * If some other reader grabs the shared lock before we do the upgrade,
@@ -768,11 +618,11 @@ lw_rwlock_unlock_contention(LW_INOUT lw_rwlock_t *rwlock,
          */
         upgrade_res = try_rwlock_upgrade_or_release(rwlock);
         if (upgrade_res) {
-            lw_rwlock_unlock_fair_contention(rwlock, TRUE, lw_lock_stats);
+            lw_rwlock_unlock_fair_contention(rwlock, TRUE);
         }
     } else if (!old.lw_rwlock_unfair) {
         /* This is a fair lock, simply call lw_rwlock_unlock_fair_contention. */
-        lw_rwlock_unlock_fair_contention(rwlock, exclusive, lw_lock_stats);
+        lw_rwlock_unlock_fair_contention(rwlock, exclusive);
     } else {
         /* Unfair lock releasing writer lock. If the oldest waiter is a reader,
          * this needs to wake up all readers. If the oldest waiter is a writer,
@@ -780,27 +630,16 @@ lw_rwlock_unlock_contention(LW_INOUT lw_rwlock_t *rwlock,
          */
         lw_assert(old.lw_rwlock_unfair);
         lw_assert(exclusive);
-        lw_rwlock_unlock_unfair_contention(rwlock, lw_lock_stats);
+        lw_rwlock_unlock_unfair_contention(rwlock);
     }
 }
 
 void
 lw_rwlock_unlock(LW_INOUT lw_rwlock_t *rwlock,
-                 LW_IN lw_bool_t exclusive,
-                 LW_INOUT lw_lock_stats_t *lw_lock_stats)
+                 LW_IN lw_bool_t exclusive)
 {
     lw_rwlock_t old;
     lw_rwlock_t new;
-
-    lw_bool_t trace;
-    const char *name;
-    if (lw_lock_stats != NULL) {
-        name = lw_lock_stats->lw_ls_name;
-        trace = (lw_lock_stats->lw_ls_trace_history == 1);
-    } else {
-        name = NULL;
-        trace = TRUE;
-    }
 
     old.lw_rwlock_val = rwlock->lw_rwlock_val;
     do {
@@ -816,42 +655,15 @@ lw_rwlock_unlock(LW_INOUT lw_rwlock_t *rwlock,
 
         if (!new.lw_rwlock_locked && new.lw_rwlock_waitq != LW_WAITER_ID_MAX) {
             /* the lock is released, but there are threads in the wait list */
-            lw_rwlock_unlock_contention(rwlock, exclusive, lw_lock_stats);
+            lw_rwlock_unlock_contention(rwlock, exclusive);
             return;
         }
 
     } while (!lw_uint32_swap(&rwlock->lw_rwlock_val, &old.lw_rwlock_val, new.lw_rwlock_val));
-
-    if (trace) {
-        /*
-         * For this to work the thread must be created using 
-         * the lw_thread APIs and the lw_thread API must be
-         * initialized with sync log feature on (that is
-         * call lw_thread_system_init() with TRUE). Otherwise,
-         * we will have a NULL returned from 
-         * lw_thread_sync_log_next_line()
-         */
-        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
-        if (line != NULL) {
-            line->lw_sll_name = lw_lock_stats->lw_ls_name;
-            line->lw_sll_lock_ptr = rwlock;
-            line->lw_sll_start_tsc = lw_rdtsc();
-            line->lw_sll_end_tsc = line->lw_sll_start_tsc;
-            if (exclusive) {
-                line->lw_sll_primitive_type = LW_SYNC_TYPE_LWRWLOCK_WR;
-            } else {
-                line->lw_sll_primitive_type = LW_SYNC_TYPE_LWRWLOCK_RD;
-                line->lw_sll_specific_data[1] = (lw_uint64_t)new.lw_rwlock_readers;
-            }
-            line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_RWLOCK_UNLOCK;
-            line->lw_sll_specific_data[0] = (lw_uint64_t)new.lw_rwlock_waitq;
-        }
-    }
 }
 
 void
-lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock,
-                    LW_INOUT lw_lock_stats_t *lw_lock_stats)
+lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock)
 {
     lw_rwlock_t old;
     lw_rwlock_t new;
@@ -865,11 +677,11 @@ lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock,
         if (old.lw_rwlock_waitq != LW_WAITER_ID_MAX) {
             /* Have existing waiters. Can't do direct downgrade */
             break;
-        } 
+        }
         new.lw_rwlock_wlocked = 0;
         new.lw_rwlock_readers = 1;
     } while (!lw_uint32_swap(&rwlock->lw_rwlock_val, &old.lw_rwlock_val, new.lw_rwlock_val));
-        
+
     if (new.lw_rwlock_readers == 1) {
         /* Managed to do swap above */
         lw_assert(new.lw_rwlock_waitq == LW_WAITER_ID_MAX);
@@ -880,7 +692,7 @@ lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock,
         lw_assert(new.lw_rwlock_wlocked);
         lw_assert(new.lw_rwlock_waitq != LW_WAITER_ID_MAX);
     }
-        
+
     this_waiter = lw_waiter_get();
     last_waiter = lw_waiter_from_id(old.lw_rwlock_waitq);
     while (last_waiter->lw_waiter_next != LW_WAITER_ID_MAX) {
@@ -893,7 +705,7 @@ lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock,
      * waiter for an async lock on another rwlock? We can do this downgrade
      * without using the waiter by simply doing the wakeup of all qualifying
      * waiters (readers, all or last depending upon fairness).
-     * 
+     *
      * Stuff below is simpler to do but limits the scope of where this feature
      * can be used.
      */
@@ -901,35 +713,10 @@ lw_rwlock_downgrade(LW_INOUT lw_rwlock_t *rwlock,
     lw_verify(this_waiter->lw_waiter_next == LW_WAITER_ID_MAX);
     this_waiter->lw_waiter_event.lw_te_base.lw_be_tag = LW_RWLOCK_SHARED;
     this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src = rwlock;
-    if (lw_lock_stats == NULL) {
-        lw_lock_stats = lw_lock_stats_get_global();
-    }
-    lw_rwlock_unlock(rwlock, TRUE, lw_lock_stats);
+    lw_rwlock_unlock(rwlock, TRUE);
     lw_waiter_wait(this_waiter); /* Should wake up right away */
     old = *rwlock;
     lw_assert(old.lw_rwlock_readers > 0);
-
-    if (lw_lock_stats->lw_ls_trace_history) {
-        /*
-         * For this to work the thread must be created using 
-         * the lw_thread APIs and the lw_thread API must be
-         * initialized with sync log feature on (that is
-         * call lw_thread_system_init() with TRUE). Otherwise,
-         * we will have a NULL returned from 
-         * lw_thread_sync_log_next_line()
-         */
-        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
-        if (line != NULL) {
-            line->lw_sll_name = lw_lock_stats->lw_ls_name;
-            line->lw_sll_lock_ptr = rwlock;
-            line->lw_sll_start_tsc = 0;
-            line->lw_sll_end_tsc = line->lw_sll_start_tsc;
-            line->lw_sll_primitive_type = LW_SYNC_TYPE_LWRWLOCK_DWNGR;
-            line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_RWLOCK_RDLOCK;
-            line->lw_sll_specific_data[0] = (lw_uint64_t)new.lw_rwlock_waitq;
-            line->lw_sll_specific_data[1] = (lw_uint64_t)new.lw_rwlock_readers;
-        }
-    }
 }
 
 static int
@@ -980,8 +767,7 @@ lw_rwlock_insert_for_upgrade(LW_INOUT lw_rwlock_t *rwlock,
 }
 
 int
-lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock,
-                  LW_INOUT lw_lock_stats_t *lw_lock_stats)
+lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock)
 {
     lw_rwlock_t old;
     lw_rwlock_t new;
@@ -995,7 +781,7 @@ lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock,
     do {
         new = old;
         if (old.lw_rwlock_waitq != LW_WAITER_ID_MAX) {
-            /* 
+            /*
              * Have more readers or waiter which could be in upgrade
              * itself. Can't grab right away.
              */
@@ -1011,10 +797,6 @@ lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock,
             new.lw_rwlock_readers -= 1;
         }
     } while (!lw_uint32_swap(&rwlock->lw_rwlock_val, &old.lw_rwlock_val, new.lw_rwlock_val));
-        
-    if (lw_lock_stats == NULL) {
-        lw_lock_stats = lw_lock_stats_get_global();
-    }
 
     if (new.lw_rwlock_wlocked) {
         /* Managed to do swap above */
@@ -1033,7 +815,7 @@ lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock,
             lw_assert(insert == EPERM);
             return EPERM;
         }
-        lw_rwlock_unlock(rwlock, FALSE, lw_lock_stats);
+        lw_rwlock_unlock(rwlock, FALSE);
     }
     lw_assert(this_waiter->lw_waiter_event.lw_te_base.lw_be_tag == LW_RWLOCK_UPGRADE);
     lw_assert(this_waiter->lw_waiter_event.lw_te_base.lw_be_wait_src == rwlock);
@@ -1041,26 +823,6 @@ lw_rwlock_upgrade(LW_INOUT lw_rwlock_t *rwlock,
     old = *rwlock;
     lw_assert(old.lw_rwlock_wlocked);
 
-    if (lw_lock_stats->lw_ls_trace_history) {
-        /*
-         * For this to work the thread must be created using 
-         * the lw_thread APIs and the lw_thread API must be
-         * initialized with sync log feature on (that is
-         * call lw_thread_system_init() with TRUE). Otherwise,
-         * we will have a NULL returned from 
-         * lw_thread_sync_log_next_line()
-         */
-        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
-        if (line != NULL) {
-            line->lw_sll_name = lw_lock_stats->lw_ls_name;
-            line->lw_sll_lock_ptr = rwlock;
-            line->lw_sll_start_tsc = 0;
-            line->lw_sll_end_tsc = line->lw_sll_start_tsc;
-            line->lw_sll_primitive_type = LW_SYNC_TYPE_LWRWLOCK_UPGR;
-            line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_RWLOCK_WRLOCK;
-            line->lw_sll_specific_data[0] = (lw_uint64_t)new.lw_rwlock_waitq;
-        }
-    }
     return 0;
 }
 

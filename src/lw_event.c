@@ -1,13 +1,20 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #include "lw_event.h"
 #include "lw_debug.h"
-#include "lw_thread.h"
-#include "lw_sync_log.h"
 #include "lw_cycles.h"
 #include <pthread.h>
 #include <errno.h>
 
 static void
-lw_thread_event_signal(LW_INOUT lw_event_t _event, 
+lw_thread_event_signal(LW_INOUT lw_event_t _event,
                        LW_INOUT void *arg);
 
 static int
@@ -16,17 +23,17 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
                      LW_INOUT const struct timespec *abstime);
 
 static lw_bool_t
-lw_thread_event_wakeup_pending(LW_INOUT lw_event_t _event, 
+lw_thread_event_wakeup_pending(LW_INOUT lw_event_t _event,
                                LW_INOUT void *arg);
 
 static void
-lw_thread_event_signal(LW_INOUT lw_event_t _event, 
+lw_thread_event_signal(LW_INOUT lw_event_t _event,
                        LW_INOUT void *arg)
 {
     LW_UNUSED_PARAMETER(arg);
     lw_thread_event_t *event = LW_EVENT_2_THREAD_EVENT(_event);
     lw_assert(lw_thread_event_wait ==
-              event->lw_te_base.lw_be_iface.lw_ei_wait); 
+              event->lw_te_base.lw_be_iface.lw_ei_wait);
     lw_verify(pthread_mutex_lock(&event->lw_te_mutex) == 0);
     lw_verify(!event->lw_te_signal_pending);
     event->lw_te_signal_pending = TRUE;
@@ -37,14 +44,14 @@ lw_thread_event_signal(LW_INOUT lw_event_t _event,
 }
 
 static lw_bool_t
-lw_thread_event_wakeup_pending(LW_INOUT lw_event_t _event, 
+lw_thread_event_wakeup_pending(LW_INOUT lw_event_t _event,
                                LW_INOUT void *arg)
 {
     LW_UNUSED_PARAMETER(arg);
     lw_thread_event_t *event = LW_EVENT_2_THREAD_EVENT(_event);
     lw_assert(lw_thread_event_signal ==
               event->lw_te_base.lw_be_iface.lw_ei_signal);
-    lw_assert(lw_thread_event_wait == 
+    lw_assert(lw_thread_event_wait ==
               event->lw_te_base.lw_be_iface.lw_ei_wait);
     return event->lw_te_signal_pending;
 }
@@ -66,19 +73,18 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
     lw_assert(lw_thread_event_signal ==
               event->lw_te_base.lw_be_iface.lw_ei_signal);
     void *src = event->lw_te_base.lw_be_wait_src;
-    lw_uint64_t tsc_event_wait = lw_rdtsc();
     lw_verify(pthread_mutex_lock(&event->lw_te_mutex) == 0);
     lw_verify(!event->lw_te_waiter_waiting);
     event->lw_te_waiter_waiting = TRUE;
     if (abstime == NULL) {
         while (!event->lw_te_signal_pending) {
-            lw_verify(pthread_cond_wait(&event->lw_te_cond, 
+            lw_verify(pthread_cond_wait(&event->lw_te_cond,
                                         &event->lw_te_mutex) == 0);
         }
     } else {
         while (!event->lw_te_signal_pending) {
-            ret = pthread_cond_timedwait(&event->lw_te_cond, 
-                                         &event->lw_te_mutex, 
+            ret = pthread_cond_timedwait(&event->lw_te_cond,
+                                         &event->lw_te_mutex,
                                          abstime);
             lw_verify(ret == 0 || ret == EINTR || ret == ETIMEDOUT);
             if (event->lw_te_signal_pending) {
@@ -100,30 +106,12 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
     lw_verify(event->lw_te_base.lw_be_wait_src == src ||
               event->lw_te_base.lw_be_wait_src == arg);
     event->lw_te_base.lw_be_wait_src = NULL;
-
-    if (event->lw_te_trace_history) {
-        /* Ideally, all paths leading to event_wait should be annotated at the
-         * upper level but this is a good catch-all. This also means that certain
-         * points will have 2 entries in the per thread logs
-         */
-        lw_sync_log_line_t *line = lw_thread_sync_log_next_line();
-        if (line != NULL) {
-            line->lw_sll_name = NULL;
-            line->lw_sll_lock_ptr = event;
-            line->lw_sll_start_tsc = tsc_event_wait;
-            line->lw_sll_end_tsc = lw_rdtsc();
-            line->lw_sll_primitive_type = LW_SYNC_TYPE_EVENT_WAIT;
-            line->lw_sll_event_id = LW_SYNC_EVENT_TYPE_BARRIER_WAIT;
-            line->lw_sll_specific_data[0] = LW_PTR_2_NUM(arg, lw_uint64_t);
-            line->lw_sll_specific_data[1] = LW_PTR_2_NUM(src, lw_uint64_t);
-        }
-    }
     return ret;
 }
 
 void
 lw_thread_event_init(LW_INOUT lw_thread_event_t *thread_event)
-{   
+{
     int ret;
     pthread_condattr_t cond_attr;
 
@@ -135,13 +123,12 @@ lw_thread_event_init(LW_INOUT lw_thread_event_t *thread_event)
 //     #define CLOCK_MONOTONIC 1
 //     ret = pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
 //     lw_verify(ret == 0);
-// 
+//
     ret = pthread_cond_init(&thread_event->lw_te_cond, &cond_attr);
     lw_verify(ret == 0);
     ret = pthread_condattr_destroy(&cond_attr);
     lw_verify(ret == 0);
 
-    thread_event->lw_te_trace_history  = TRUE; 
     thread_event->lw_te_signal_pending = FALSE;
     thread_event->lw_te_waiter_waiting = FALSE;
 #ifdef LW_DEBUG
@@ -156,7 +143,7 @@ lw_thread_event_init(LW_INOUT lw_thread_event_t *thread_event)
 void
 lw_thread_event_destroy(LW_INOUT lw_thread_event_t *event)
 {
-    lw_verify(event->lw_te_base.lw_be_wait_src == NULL); 
+    lw_verify(event->lw_te_base.lw_be_wait_src == NULL);
     lw_verify(!event->lw_te_signal_pending);
     lw_verify(!event->lw_te_waiter_waiting);
     lw_verify(pthread_mutex_destroy(&event->lw_te_mutex) == 0);

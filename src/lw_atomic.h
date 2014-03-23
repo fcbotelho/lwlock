@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __LW_ATOMIC_H__
 #define __LW_ATOMIC_H__
 
@@ -80,7 +89,7 @@ lw_uint32_cmpxchg(LW_INOUT volatile lw_uint32_t *var,
                   : "memory");
 
     return prev;
-} 
+}
 
 
 /**
@@ -119,22 +128,22 @@ lw_uint64_cmpxchg(volatile lw_uint64_t *var,
 
 /**
  * Atomic increment (32 bit)
- * 
- * @param var (i/o) pointer to an integer that will be 
+ *
+ * @param var (i/o) pointer to an integer that will be
  *            atomically incremented.
  * @param increment (i) value to be incremented.
  *
  * @description
  *
- * Atomically add increment value to the int pointed to by var 
+ * Atomically add increment value to the int pointed to by var
  */
 static inline void __attribute__ ((always_inline))
-lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var, 
+lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var,
                    LW_IN lw_uint32_t increment)
-{    
+{
     lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
     asm volatile("lock; addl %0, %1"
-                 : 
+                 :
                  : "q"(increment),
                    "m"(*var)
                  : "memory");
@@ -142,22 +151,22 @@ lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var,
 
 /**
  * Atomic increment (64 bit)
- * 
- * @param var (i/o) pointer to an integer that will be 
+ *
+ * @param var (i/o) pointer to an integer that will be
  *            atomically incremented.
  * @param increment (i) value to be incremented.
  *
  * @description
  *
- * Atomically add increment value to the int pointed to by var 
+ * Atomically add increment value to the int pointed to by var
  */
 static inline void __attribute__ ((always_inline))
-lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var, 
+lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var,
                    LW_IN lw_uint64_t increment)
-{    
+{
     lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
     asm volatile("lock; addq %0, %1"
-                 : 
+                 :
                  : "q"(increment),
                    "m"(*var)
                  : "memory");
@@ -165,19 +174,19 @@ lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var,
 
 /**
  * Atomic increment with the return of the old value (32 bit)
- * 
- * @param var (i/o) pointer to an integer that will be 
+ *
+ * @param var (i/o) pointer to an integer that will be
  *            atomically incremented.
  * @param increment (i) value to be incremented.
  *
  * @description
  *
- * Atomically add increment value to the int pointed to by var 
- * 
+ * Atomically add increment value to the int pointed to by var
+ *
  * @return The value originally contained in var.
  */
 static inline lw_uint32_t __attribute__ ((always_inline))
-lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var, 
+lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var,
                     LW_IN lw_uint32_t increment)
 {
     lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
@@ -188,18 +197,18 @@ lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var,
                  : "memory");
     return increment; /* This is old value! */
 }
- 
+
 /**
  * Atomic increment with the return of the old value (64 bit)
- * 
- * @param var (i/o) pointer to an integer that will be 
+ *
+ * @param var (i/o) pointer to an integer that will be
  *            atomically incremented.
  * @param increment (i) value to be incremented.
  *
  * @description
  *
- * Atomically add increment value to the int pointed to by var 
- * 
+ * Atomically add increment value to the int pointed to by var
+ *
  * @return The value originally contained in var.
  */
 static inline lw_uint64_t __attribute__ ((always_inline))
@@ -222,9 +231,9 @@ lw_uint64_lock_xadd(volatile lw_uint64_t *var, lw_uint64_t increment)
 
 
 /*
- * The lw_atomic_init and lw_atomic_destroy APIs are only needed 
+ * The lw_atomic_init and lw_atomic_destroy APIs are only needed
  * when AMD64_ASM is not defined. They are used to initialize/destroy
- * a pthread mutex used to implement the other APIs in case the 
+ * a pthread mutex used to implement the other APIs in case the
  * platform does not support atomic operations natively.
  */
 extern void
@@ -272,9 +281,9 @@ lw_uint16_cmpxchg(LW_INOUT volatile lw_uint16_t *var,
  *
  * @return The value originally contained in var.
  */
-extern lw_uint32_t 
-lw_uint32_cmpxchg(LW_INOUT volatile lw_uint32_t *var, 
-                  LW_IN lw_uint32_t old, 
+extern lw_uint32_t
+lw_uint32_cmpxchg(LW_INOUT volatile lw_uint32_t *var,
+                  LW_IN lw_uint32_t old,
                   LW_IN lw_uint32_t new);
 
 /**
@@ -294,25 +303,25 @@ lw_uint32_cmpxchg(LW_INOUT volatile lw_uint32_t *var,
  *
  * @return The value originally contained in var.
  */
-extern lw_uint64_t 
-lw_uint64_cmpxchg(LW_INOUT volatile lw_uint64_t *var, 
-                  LW_IN lw_uint64_t old, 
+extern lw_uint64_t
+lw_uint64_cmpxchg(LW_INOUT volatile lw_uint64_t *var,
+                  LW_IN lw_uint64_t old,
                   LW_IN lw_uint64_t new);
 
 
 /**
  * Atomic increment (32 bit)
- * 
- * @param var (i/o) pointer to an integer that will be 
+ *
+ * @param var (i/o) pointer to an integer that will be
  *            atomically incremented.
  * @param increment (i) value to be incremented.
  *
  * @description
  *
- * Atomically add increment value to the int pointed to by var 
+ * Atomically add increment value to the int pointed to by var
  */
 static inline void __attribute__ ((always_inline))
-lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var, 
+lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var,
                    LW_IN lw_uint32_t increment)
 {
 
@@ -327,19 +336,19 @@ lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var,
 
 /**
  * Atomic increment with the return of the old value (32 bit)
- * 
- * @param var (i/o) pointer to an integer that will be 
+ *
+ * @param var (i/o) pointer to an integer that will be
  *            atomically incremented.
  * @param increment (i) value to be incremented.
  *
  * @description
  *
- * Atomically add increment value to the int pointed to by var 
- * 
+ * Atomically add increment value to the int pointed to by var
+ *
  * @return The value originally contained in var.
  */
 static inline lw_uint32_t __attribute__ ((always_inline))
-lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var, 
+lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var,
                     LW_IN lw_uint32_t increment)
 {
     lw_uint32_t old, new;
@@ -354,17 +363,17 @@ lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var,
 
 /**
  * Atomic increment (64 bit)
- * 
- * @param var (i/o) pointer to an integer that will be 
+ *
+ * @param var (i/o) pointer to an integer that will be
  *            atomically incremented.
  * @param increment (i) value to be incremented.
  *
  * @description
  *
- * Atomically add increment value to the int pointed to by var 
+ * Atomically add increment value to the int pointed to by var
  */
 static inline void __attribute__ ((always_inline))
-lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var, 
+lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var,
                    LW_IN lw_uint64_t increment)
 {
 
@@ -378,19 +387,19 @@ lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var,
 
 /**
  * Atomic increment with the return of the old value (64 bit)
- * 
- * @param var (i/o) pointer to an integer that will be 
+ *
+ * @param var (i/o) pointer to an integer that will be
  *            atomically incremented.
  * @param increment (i) value to be incremented.
  *
  * @description
  *
- * Atomically add increment value to the int pointed to by var 
- * 
+ * Atomically add increment value to the int pointed to by var
+ *
  * @return The value originally contained in var.
  */
 static inline lw_uint64_t __attribute__ ((always_inline))
-lw_uint64_lock_xadd(LW_INOUT volatile lw_uint64_t *var, 
+lw_uint64_lock_xadd(LW_INOUT volatile lw_uint64_t *var,
                     LW_IN lw_uint64_t increment)
 {
     lw_uint64_t old, new;
@@ -410,15 +419,15 @@ lw_uint64_lock_xadd(LW_INOUT volatile lw_uint64_t *var,
 
 
 /*
- * Alternative interface to lw_uint32_cmpxchg/lw_uint64_cmpxchg 
- * which returns a bool to indicate if the swap occured. On failure, 
+ * Alternative interface to lw_uint32_cmpxchg/lw_uint64_cmpxchg
+ * which returns a bool to indicate if the swap occured. On failure,
  * updates the old value.
  */
 static inline lw_bool_t __attribute__ ((always_inline))
 lw_uint64_swap(LW_INOUT lw_uint64_t volatile *var,
                LW_INOUT lw_uint64_t volatile *old,
                LW_IN lw_uint64_t new)
-{   
+{
     lw_uint64_t curval;
     lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
     curval = lw_uint64_cmpxchg(var, *old, new);
@@ -433,13 +442,13 @@ static inline lw_bool_t __attribute__ ((always_inline))
 lw_uint32_swap(LW_INOUT lw_uint32_t volatile *var,
                LW_INOUT lw_uint32_t volatile *old,
                LW_IN lw_uint32_t new)
-{     
+{
     lw_uint32_t curval;
     lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
     curval = lw_uint32_cmpxchg(var, *old, new);
     if (curval == *old) {
         return TRUE;
-    }   
+    }
     *old = curval;
     return FALSE;
 }
@@ -534,7 +543,7 @@ static inline lw_uint32_t __attribute__ ((always_inline))
 lw_atomic32_inc_with_ret(LW_INOUT lw_atomic32_t *atomic)
 {
     // lw_uint32_lock_xinc returns old value
-    return (lw_uint32_lock_xinc(&atomic->val) + 1); 
+    return (lw_uint32_lock_xinc(&atomic->val) + 1);
 }
 
 /**
@@ -627,7 +636,7 @@ lw_atomic32_add_with_ret(LW_INOUT lw_atomic32_t *atomic,
  * @return none
  */
 static inline void __attribute__ ((always_inline))
-lw_atomic32_sub(LW_INOUT lw_atomic32_t *atomic, 
+lw_atomic32_sub(LW_INOUT lw_atomic32_t *atomic,
                 LW_IN lw_uint32_t i)
 {
     lw_uint32_lock_sub(&atomic->val, i);
@@ -647,7 +656,7 @@ lw_atomic32_sub(LW_INOUT lw_atomic32_t *atomic,
  * @return Value following subtraction
  */
 static inline lw_uint32_t __attribute__ ((always_inline))
-lw_atomic32_sub_with_ret(LW_INOUT lw_atomic32_t *atomic, 
+lw_atomic32_sub_with_ret(LW_INOUT lw_atomic32_t *atomic,
                          LW_IN lw_uint32_t i)
 {
     return lw_uint32_lock_xsub(&atomic->val, i) - i;
@@ -669,7 +678,7 @@ lw_atomic32_sub_with_ret(LW_INOUT lw_atomic32_t *atomic,
  * @return none
  */
 static inline void __attribute__ ((always_inline))
-lw_atomic64_set(LW_INOUT lw_atomic64_t *atomic, 
+lw_atomic64_set(LW_INOUT lw_atomic64_t *atomic,
                 LW_IN lw_uint64_t val)
 {
     atomic->val = val;
@@ -779,7 +788,7 @@ lw_atomic64_dec_with_ret(LW_INOUT lw_atomic64_t *atomic)
  * @return none
  */
 static inline void __attribute__ ((always_inline))
-lw_atomic64_add(LW_INOUT lw_atomic64_t *atomic, 
+lw_atomic64_add(LW_INOUT lw_atomic64_t *atomic,
                 LW_IN lw_uint64_t i)
 {
     lw_uint64_lock_add(&atomic->val, i);
@@ -799,7 +808,7 @@ lw_atomic64_add(LW_INOUT lw_atomic64_t *atomic,
  * @return Value following addition
  */
 static inline lw_uint64_t __attribute__ ((always_inline))
-lw_atomic64_add_with_ret(LW_INOUT lw_atomic64_t *atomic, 
+lw_atomic64_add_with_ret(LW_INOUT lw_atomic64_t *atomic,
                          LW_IN lw_uint64_t i)
 {
     return lw_uint64_lock_xadd(&atomic->val, i) + i;

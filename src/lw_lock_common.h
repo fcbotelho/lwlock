@@ -1,3 +1,12 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __LW_LOCK_COMMON_H__
 #define __LW_LOCK_COMMON_H__
 
@@ -6,7 +15,7 @@
 #include "lw_mutex2b.h"
 #include <pthread.h>
 
-/* This file implements a common set of APIs for lw lock primitives. 
+/* This file implements a common set of APIs for lw lock primitives.
  * This common set of API has two uses:
  *    1) write test program that works on different kinds of locks
  *       with minimum code duplication
@@ -43,29 +52,28 @@ lw_lock_common_lock_type_description(lw_lock_type_t type) {
     }
 }
 
-static inline void 
+static inline void
 lw_lock_common_acquire_lock(LW_INOUT void *lock,
                             LW_IN lw_lock_type_t type,
-                            LW_IN lw_waiter_t *waiter,
-                            LW_INOUT lw_lock_stats_t *stats)
+                            LW_IN lw_waiter_t *waiter)
 {
     switch(type) {
         case LW_LOCK_TYPE_PMUTEX:
             pthread_mutex_lock(lock);
             break;
         case LW_LOCK_TYPE_LWMUTEX:
-            lw_mutex_lock(lock, stats);
+            lw_mutex_lock(lock);
             break;
         case LW_LOCK_TYPE_LWMUTEX2B:
-            lw_mutex2b_lock(lock, stats);
+            lw_mutex2b_lock(lock);
             break;
         case LW_LOCK_TYPE_LWRWLOCK_RD:
             /* TODO: uncomment the following line once lw_rwlock is implemented */
-            // lw_verify(lw_rwlock_lock(lock, LW_LOCK_SHARED | LW_LOCK_WAIT, waiter, stats) == 0);
+            // lw_verify(lw_rwlock_lock(lock, LW_LOCK_SHARED | LW_LOCK_WAIT, waiter) == 0);
             break;
         case LW_LOCK_TYPE_LWRWLOCK_WR:
             /* TODO: uncomment the following line once lw_rwlock is implemented */
-            // lw_verify(lw_rwlock_lock(lock, LW_LOCK_EXCLUSIVE | LW_LOCK_WAIT, waiter, stats) == 0);
+            // lw_verify(lw_rwlock_lock(lock, LW_LOCK_EXCLUSIVE | LW_LOCK_WAIT, waiter) == 0);
             break;
         case LW_LOCK_TYPE_NONE:
             /* no op */
@@ -76,28 +84,27 @@ lw_lock_common_acquire_lock(LW_INOUT void *lock,
     }
 }
 
-static inline void 
+static inline void
 lw_lock_common_drop_lock(LW_INOUT void *lock,
-                         LW_IN lw_lock_type_t type,
-                         LW_INOUT lw_lock_stats_t *stats)
+                         LW_IN lw_lock_type_t type)
 {
     switch(type) {
         case LW_LOCK_TYPE_PMUTEX:
             pthread_mutex_unlock(lock);
             break;
         case LW_LOCK_TYPE_LWMUTEX:
-            lw_mutex_unlock(lock, TRUE);
+            lw_mutex_unlock(lock);
             break;
         case LW_LOCK_TYPE_LWMUTEX2B:
-            lw_mutex2b_unlock(lock, TRUE);
+            lw_mutex2b_unlock(lock);
             break;
         case LW_LOCK_TYPE_LWRWLOCK_RD:
             /* TODO: uncomment the following line once lw_rwlock is implemented */
-            // lw_rwlock_unlock(lock, FALSE, stats);
+            // lw_rwlock_unlock(lock, FALSE);
             break;
         case LW_LOCK_TYPE_LWRWLOCK_WR:
             /* TODO: uncomment the following line once lw_rwlock is implemented */
-            // lw_rwlock_unlock(lock, TRUE, stats);
+            // lw_rwlock_unlock(lock, TRUE);
             break;
         case LW_LOCK_TYPE_NONE:
             /* no op */
