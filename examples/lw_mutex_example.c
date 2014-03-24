@@ -51,7 +51,6 @@ critical_region(void)
 
     for (i = 0; i < DATA_NUM; i++) {
         data[i] += 1;
-        // pthread_yield(); // increase chance of race
         cpu_yield(); // increase chance of race
     }
 
@@ -71,8 +70,42 @@ wr_thread_fn(void *arg)
     lw_mutex_lock(&barrier_mutex);
     lw_mutex_unlock(&barrier_mutex);
 
-    for (i =0; i < DATA_MAX_INCREMENT; i++) {
+    for (i = 0; i < DATA_MAX_INCREMENT; i++) {
         critical_region();
+    }
+
+    return NULL;
+}
+
+static void
+readonly_region(void)
+{
+    lw_uint32_t i;
+
+    lw_verify (data_lock_type == LW_LOCK_TYPE_LWRWLOCK_WR);
+    
+    lw_lock_common_acquire_lock(data_lock, LW_LOCK_TYPE_LWRWLOCK_RD, NULL);
+
+    for (i = 1; i < DATA_NUM; i++) {
+        /* all data[i] values should be indentical at a consistent point */
+        lw_verify(data[i] == data[0]);
+        cpu_yield(); // increase chance of race
+    }
+
+    lw_lock_common_drop_lock(data_lock, LW_LOCK_TYPE_LWRWLOCK_RD);
+}
+
+static void *
+rd_thread_fn(void *arg)
+{
+    lw_uint32_t i;
+
+    // wait for all threads to be created
+    lw_mutex_lock(&barrier_mutex);
+    lw_mutex_unlock(&barrier_mutex);
+
+    for (i = 0; i < DATA_MAX_INCREMENT; i++) {
+        readonly_region();
     }
 
     return NULL;
@@ -83,6 +116,7 @@ do_test(void)
 {
     lw_uint32_t i;
     pthread_t wr_thrds[THRD_NUM];
+    pthread_t rd_thrds[THRD_NUM]; // only used for testing lw_rwlock_t
 
     fprintf(stdout,
             "RUNNING TEST (lock type=%s) \n",
@@ -92,6 +126,8 @@ do_test(void)
     clear_data();
 
     lw_mutex_lock(&barrier_mutex);
+
+    /* create threads */
     for (i = 0; i < THRD_NUM; i++) {
         lw_verify(pthread_create(&wr_thrds[i],
                                  NULL,
@@ -99,11 +135,29 @@ do_test(void)
                                  NULL) == 0);
         fprintf(stdout, "%s: created write thread %d\n", __func__, i);
     }
-    lw_mutex_unlock(&barrier_mutex); // This will allow the threads to actually start working
+    if (data_lock_type == LW_LOCK_TYPE_LWRWLOCK_WR) {
+        for (i = 0; i < THRD_NUM; i++) {
+            lw_verify(pthread_create(&rd_thrds[i],
+                                     NULL,
+                                     rd_thread_fn,
+                                     NULL) == 0);
+            fprintf(stdout, "%s: created read thread %d\n", __func__, i);
+        }
+    }
 
+    /* allow the threads to actually start working */
+    lw_mutex_unlock(&barrier_mutex); 
+
+    /* join the threads */
     for (i = 0; i < THRD_NUM; i++) {
         pthread_join(wr_thrds[i], NULL);
         fprintf(stdout, "%s: joined write thread %d\n", __func__, i);
+    }
+    if (data_lock_type == LW_LOCK_TYPE_LWRWLOCK_WR) {
+        for (i = 0; i < THRD_NUM; i++) {
+            pthread_join(rd_thrds[i], NULL);
+            fprintf(stdout, "%s: joined read thread %d\n", __func__, i);
+        }
     }
 
     fprintf(stdout, "Final values:\n");
@@ -158,6 +212,14 @@ int main(int argc, char **argv)
     data_lock_type = LW_LOCK_TYPE_LWMUTEX2B;
     do_test();
     lw_mutex2b_destroy(&mutex2b);
+
+    /* Test with lw_rwlock_t */
+    lw_rwlock_t rwlock;
+    lw_rwlock_init(&rwlock, LW_RWLOCK_DEFAULT);
+    data_lock = &rwlock;
+    data_lock_type = LW_LOCK_TYPE_LWRWLOCK_WR;
+    do_test();
+    lw_rwlock_destroy(&rwlock);
 
     /* common shutdown */
     lw_mutex_destroy(&barrier_mutex);
