@@ -13,6 +13,7 @@
 #include "lw_waiter.h"
 #include "lw_mutex.h"
 #include "lw_mutex2b.h"
+#include "lw_rwlock.h"
 #include <pthread.h>
 
 /* This file implements a common set of APIs for lw lock primitives.
@@ -55,7 +56,7 @@ lw_lock_common_lock_type_description(lw_lock_type_t type) {
 static inline void
 lw_lock_common_acquire_lock(LW_INOUT void *lock,
                             LW_IN lw_lock_type_t type,
-                            LW_IN lw_waiter_t *waiter)
+                            LW_INOUT lw_waiter_t *waiter)
 {
     switch(type) {
         case LW_LOCK_TYPE_PMUTEX:
@@ -68,12 +69,10 @@ lw_lock_common_acquire_lock(LW_INOUT void *lock,
             lw_mutex2b_lock(lock);
             break;
         case LW_LOCK_TYPE_LWRWLOCK_RD:
-            /* TODO: uncomment the following line once lw_rwlock is implemented */
-            // lw_verify(lw_rwlock_lock(lock, LW_LOCK_SHARED | LW_LOCK_WAIT, waiter) == 0);
+            lw_verify(lw_rwlock_lock(lock, LW_RWLOCK_SHARED | LW_RWLOCK_WAIT, waiter) == 0);
             break;
         case LW_LOCK_TYPE_LWRWLOCK_WR:
-            /* TODO: uncomment the following line once lw_rwlock is implemented */
-            // lw_verify(lw_rwlock_lock(lock, LW_LOCK_EXCLUSIVE | LW_LOCK_WAIT, waiter) == 0);
+            lw_verify(lw_rwlock_lock(lock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_WAIT, waiter) == 0);
             break;
         case LW_LOCK_TYPE_NONE:
             /* no op */
@@ -99,12 +98,10 @@ lw_lock_common_drop_lock(LW_INOUT void *lock,
             lw_mutex2b_unlock(lock);
             break;
         case LW_LOCK_TYPE_LWRWLOCK_RD:
-            /* TODO: uncomment the following line once lw_rwlock is implemented */
-            // lw_rwlock_unlock(lock, FALSE);
+             lw_rwlock_unlock(lock, FALSE);
             break;
         case LW_LOCK_TYPE_LWRWLOCK_WR:
-            /* TODO: uncomment the following line once lw_rwlock is implemented */
-            // lw_rwlock_unlock(lock, TRUE);
+            lw_rwlock_unlock(lock, TRUE);
             break;
         case LW_LOCK_TYPE_NONE:
             /* no op */
