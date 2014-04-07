@@ -43,11 +43,11 @@ typedef lw_waiter_t *
                             LW_IN lw_uint32_t id);
 
 struct lw_waiter_domain_s {
-    lw_waiter_alloc_func_t    lw_wd_alloc_waiter;
-    lw_waiter_free_func_t     lw_wd_free_waiter;
-    lw_waiter_get_func_t      lw_wd_get_waiter;
-    lw_waiter_from_id_func_t  lw_wd_id2waiter;
-    void                      *lw_wd_opaque;
+    lw_waiter_alloc_func_t    alloc_waiter;
+    lw_waiter_free_func_t     free_waiter;
+    lw_waiter_get_func_t      get_waiter;
+    lw_waiter_from_id_func_t  id2waiter;
+    void                      *opaque;
 };
 
 extern lw_waiter_domain_t  *lw_waiter_global_domain;
@@ -55,26 +55,26 @@ extern lw_waiter_domain_t  *lw_waiter_global_domain;
 static inline lw_waiter_t *
 lw_waiter_alloc(void)
 {
-    return lw_waiter_global_domain->lw_wd_alloc_waiter(lw_waiter_global_domain);
+    return lw_waiter_global_domain->alloc_waiter(lw_waiter_global_domain);
 }
 
 static inline void
 lw_waiter_free(LW_INOUT void *arg)
 {
     lw_waiter_t *waiter = arg;
-    waiter->domain->lw_wd_free_waiter(waiter->domain, waiter);
+    waiter->domain->free_waiter(waiter->domain, waiter);
 }
 
 static inline lw_waiter_t *
 lw_waiter_get(void)
 {
-    return lw_waiter_global_domain->lw_wd_get_waiter(lw_waiter_global_domain);
+    return lw_waiter_global_domain->get_waiter(lw_waiter_global_domain);
 }
 
 static inline lw_waiter_t *
 lw_waiter_from_id(LW_IN lw_uint32_t id)
 {
-    return lw_waiter_global_domain->lw_wd_id2waiter(lw_waiter_global_domain,
+    return lw_waiter_global_domain->id2waiter(lw_waiter_global_domain,
                                                     id);
 }
 
@@ -115,7 +115,7 @@ lw_waiter_wake_all(LW_INOUT lw_waiter_domain_t *domain,
         lw_verify(domain != NULL);
     }
     while (id < LW_WAITER_ID_MAX) {
-        waiter = domain->lw_wd_id2waiter(domain, id);
+        waiter = domain->id2waiter(domain, id);
         lw_assert(waiter->initialized);
         id = waiter->next;
         waiter->next = LW_WAITER_ID_MAX;

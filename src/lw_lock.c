@@ -14,7 +14,7 @@
 
 
 void
-lw_lock_init(lw_bool_t track_sync_events, lw_waiter_domain_t *domain)
+lw_lock_init(lw_waiter_domain_t *domain)
 {
     lw_atomic_init();
     lw_waiter_domain_init_global(domain);
