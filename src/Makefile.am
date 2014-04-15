@@ -4,7 +4,8 @@ include_HEADERS = lw_lock.h \
 				  lw_mutex.h \
 				  lw_mutex2b.h \
 				  lw_rwlock.h \
-				  lw_cond_var.h
+				  lw_cond_var.h \
+				  atomic_list.h
 
 liblwlock_la_SOURCES =  lw_lock.h \
                         lw_types.h \
@@ -31,7 +32,8 @@ liblwlock_la_SOURCES =  lw_lock.h \
 						lw_dlist.c \
 						lw_event.c \
 						lw_waiter.c \
-						lw_rwlock.c
+						lw_rwlock.c \
+						atomic_list.c
 
 liblwlock_la_LDFLAGS = -version-info 0:0:0
 liblwlock_la_LIBADD  = $(PTHREAD_LIBS)

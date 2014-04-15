@@ -1,20 +1,20 @@
+/***
+ * Developed originally at EMC Corporation, this library is released under the
+ * MPL 2.0 license.  Please refer to the MPL-2.0 file in the repository for its
+ * full description or to http://www.mozilla.org/MPL/2.0/ for the online version.
+ *
+ * Before contributing to the project one needs to sign the committer agreement
+ * available in the "committerAgreement" directory.
+ */
+
 #ifndef __ATOMIC_LIST_H__
 #define __ATOMIC_LIST_H__
 
-/*
- * Copyright(c) 2010-2010 Data Domain, Inc.  All rights reserved.
- *
- * DATA DOMAIN CONFIDENTIAL -- This is an unpublished work of Data Domain, Inc.,
- * and is fully protected under copyright and trade secret laws.  You may not view,
- * use, disclose, copy, or distribute this file or any information herein except
- * pursuant to a valid written license from Data Domain.
- */
-
-#include "dd_types.h"
-#include "debug.h"
-#include "dd_util.h"
-#include "dd_magic.h"
-#include "dd_thread.h"
+#include "lw_types.h"
+#include "lw_debug.h"
+#include "lw_util.h"
+#include "lw_magic.h"
+#include "lw_rwlock.h"
 
 /*
  * Generic Linear Doubly Linked List Support with internal locking for consistency.
@@ -36,7 +36,7 @@
  */
 
 typedef enum {
-    ADL_INITIALIZED = DD_MAGIC(0x7260), /**< dlist_t value when it has been initialized */
+    ADL_INITIALIZED = LW_MAGIC(0x7260), /**< dlist_t value when it has been initialized */
 } atomic_dl_magic_t;
 
 /*
@@ -47,23 +47,23 @@ typedef struct adelem_struct adelem_t;
 
 typedef union {
     struct {
-        dd_uint16_t         aref_pin_count:15; /* Prevent elem from being removed */
-        dd_uint16_t         aref_mask:1;       /* Set to remove elem from list */
-        dd_thread_wait_id_t aref_wait_id;
+        lw_uint16_t         pin_count:15; /* Prevent elem from being removed */
+        lw_uint16_t         mask:1;       /* Set to remove elem from list */
+        lw_waiter_id_t      wait_id;
     } fields;
-    volatile dd_uint32_t    aref_atomic;
-} adl_refcnt_t;
+    volatile lw_uint32_t    atomic;
+} ALIGNED(4) adl_refcnt_t;
 
 /**
  * Generic List Element structure
  */
 struct adelem_struct {
-    adelem_t    *adelem_next;      /**< Pointer to the next element in the list */
-    adelem_t    *adelem_prev;      /**< Pointer to the previous element in the list */
-    adl_refcnt_t adelem_refcnt;    /**< Ensures element is not destroyed prematurely */
-    dd_lwlock_t  adelem_lock;      /**< rwlock to update prev/next pointers */
-#ifdef DD_DEBUG
-    adlist_t    *adelem_list;      /**< Points to the list of which it is a member */
+    adelem_t    *next;      /**< Pointer to the next element in the list */
+    adelem_t    *prev;      /**< Pointer to the previous element in the list */
+    adl_refcnt_t refcnt;    /**< Ensures element is not destroyed prematurely */
+    lw_rwlock_t  lock;      /**< rwlock to update prev/next pointers */
+#ifdef LW_DEBUG
+    adlist_t    *list;      /**< Points to the list of which it is a member */
 #endif
 };
 
@@ -71,21 +71,19 @@ struct adelem_struct {
  * Generic List Head structure
  */
 struct atomic_dlist_struct {
-    adelem_t                 adl_register_link;
-    adelem_t                *adl_head;     /**< Pointer to the first element in the list */
-    adelem_t                *adl_tail;     /**< Pointer to the last element in the list */
-    dd_lwlock_t              adl_head_lock;
-    dd_lwlock_t              adl_tail_lock;
-    dd_atomic32_t            adl_count;    /**< Number of members in the list. Cannot be
+    adelem_t                 *head;     /**< Pointer to the first element in the list */
+    adelem_t                 *tail;     /**< Pointer to the last element in the list */
+    lw_rwlock_t              head_lock;
+    lw_rwlock_t              tail_lock;
+    lw_atomic32_t            count;    /**< Number of members in the list. Cannot be
                                             * 100 accurate without race. It is conservatively
                                             * an upper bound.
                                             */
-    dd_thread_wait_domain_t *adl_domain;
-    dd_lwlock_stats_t        adl_stats;
-    char const              *adl_name;
-#ifdef DD_DEBUG
-    dd_atomic32_t            adl_refcnt;   /**< To verify list is not destroyed prematurely */
-    atomic_dl_magic_t        adl_magic;    /**< Set to DL_INITIALIZED when initialized */
+    lw_waiter_domain_t       *domain;
+    char const               *name;
+#ifdef LW_DEBUG
+    lw_atomic32_t            refcnt;   /**< To verify list is not destroyed prematurely */
+    atomic_dl_magic_t        magic;    /**< Set to DL_INITIALIZED when initialized */
 #endif
 };
 
@@ -99,7 +97,7 @@ struct atomic_dlist_struct {
  */
 extern void adl_init(adlist_t *const list,
                      char const *name,
-                     dd_thread_wait_domain_t *domain);
+                     lw_waiter_domain_t *domain);
 
 /**
  * Destroy a list, ensuring it cannot be used again.
@@ -120,7 +118,7 @@ extern void adl_destroy(adlist_t *const list);
  *
  * @return TRUE if the list is empty, FALSE otherwise.
  */
-extern dd_bool_t adl_is_empty(const adlist_t *list);
+extern lw_bool_t adl_is_empty(const adlist_t *list);
 
 /**
  * Return the number of elements in the specified list.
@@ -129,7 +127,7 @@ extern dd_bool_t adl_is_empty(const adlist_t *list);
  *
  * @return The number of elements in the list.
  */
-extern dd_uint32_t adl_count(const adlist_t *list);
+extern lw_uint32_t adl_count(const adlist_t *list);
 
 /**
  * Get the first element in a list. The returned element is pinned.
@@ -190,7 +188,7 @@ typedef enum {
 /**
  * Given a list and an element within that list, remove it. The
  * given element should already be pinned by the caller.
- * 
+ *
  * @param list (i) the list from which the element is to be removed.
  * @param elem (i/o) the list element to remove.
  *
@@ -227,13 +225,13 @@ extern adl_remove_result_t adl_remove_elem_start(adlist_t *const list,
  */
 extern void adl_remove_elem_wait(adlist_t *const list,
                                  adelem_t *const elem,
-                                 dd_thread_wait_t *waiter);
+                                 lw_waiter_t *waiter);
 
 /**
  * Check if an element marked for removal is ready to be removed.
  * This must be called before calling adl_remove_elem_wait.
  */
-extern dd_bool_t adl_remove_elem_ready(adlist_t *const list,
+extern lw_bool_t adl_remove_elem_ready(adlist_t *const list,
                                        adelem_t *const elem);
 
 /**
@@ -252,15 +250,15 @@ void adl_remove_elem_do(adlist_t *const list, adelem_t *const elem);
  * Convenience wrapper for the last 2 stages of removing an element as doing
  * them back to back is going to be a common use case. Note: If using
  * non-default domain for waiters, be careful about using this function. Use
- * it only if dd_thread_do_wait followed by the adl_remove_elem_do makes
+ * it only if lw_thread_do_wait followed by the adl_remove_elem_do makes
  * sense.
  */
 static inline void
 adl_remove_elem_finish(adlist_t *const list,
                        adelem_t *const elem,
-                       dd_thread_wait_t *waiter)
+                       lw_waiter_t *waiter)
 {
-    dd_assert(waiter == NULL || waiter->domain == list->adl_domain);
+    lw_assert(waiter == NULL || waiter->domain == list->domain);
     adl_remove_elem_wait(list, elem, waiter);
     adl_remove_elem_do(list, elem);
 }
@@ -298,7 +296,7 @@ extern void *_adl_pop(adlist_t *const list);
  */
 extern void adl_insert_at_front(adlist_t *const list,
                                 adelem_t *const new,
-                                IN dd_bool_t return_pinned);
+                                LW_IN lw_bool_t return_pinned);
 
 /**
  * Append the specified element at the end of the specified list.
@@ -309,7 +307,7 @@ extern void adl_insert_at_front(adlist_t *const list,
  */
 extern void adl_append_at_end(adlist_t *const list,
                               adelem_t *const new,
-                              IN dd_bool_t return_pinned);
+                              LW_IN lw_bool_t return_pinned);
 
 /**
  * Insert the specified new element in front of the specified element
@@ -326,7 +324,7 @@ extern void adl_append_at_end(adlist_t *const list,
 extern void adl_insert_elem_before(adlist_t *const list,
                                    adelem_t *const elem,
                                    adelem_t *const new,
-                                   IN dd_bool_t return_pinned);
+                                   LW_IN lw_bool_t return_pinned);
 
 /**
  * Insert the specified new element after the specified element
@@ -342,24 +340,24 @@ extern void adl_insert_elem_before(adlist_t *const list,
 extern void adl_insert_elem_after(adlist_t *const list,
                                   adelem_t *const elem,
                                   adelem_t *const new,
-                                  IN dd_bool_t return_pinned);
+                                  LW_IN lw_bool_t return_pinned);
 
 
 #define adl_assert_elem_on_list(_list, elem) \
-    dd_assert((elem) == NULL || (elem)->adelem_list == _list)
+    lw_assert((elem) == NULL || (elem)->adelem_list == _list)
 
 /**
  * Pin an element so it does not get deleted.
  */
-dd_bool_t adl_elem_pin(adelem_t *const elem);
+lw_bool_t adl_elem_pin(adelem_t *const elem);
 
 #define adl_assert_elem_is_pinned(elem) \
-    dd_assert((elem) == NULL || (elem)->adelem_refcnt.fields.aref_pin_count > 0)
+    lw_assert((elem) == NULL || (elem)->adelem_refcnt.fields.aref_pin_count > 0)
 
-dd_bool_t adl_elem_not_on_any_list(adelem_t const *const elem);
+lw_bool_t adl_elem_not_on_any_list(adelem_t const *const elem);
 
 #define adl_assert_elem_is_pinned_or_masked(elem)                \
-    dd_assert((elem) == NULL ||                                  \
+    lw_assert((elem) == NULL ||                                  \
               (elem)->adelem_refcnt.fields.aref_pin_count > 0 || \
               (elem)->adelem_refcnt.fields.aref_mask == 1)
 
@@ -371,12 +369,12 @@ void adl_elem_unpin(adlist_t *const list, adelem_t *const elem);
 
 /**
  * Convenience wrapper for doing all the steps of removing an element.
- * Note: If using non-default domain for waiters, be careful about using 
- * this function. Use it only if dd_thread_do_wait followed by the 
+ * Note: If using non-default domain for waiters, be careful about using
+ * this function. Use it only if lw_thread_do_wait followed by the
  * adl_remove_elem_do makes sense.
  */
-static inline dd_bool_t
-adl_elem_delete(adlist_t *const list, adelem_t *const elem, IN dd_bool_t need_pin)
+static inline lw_bool_t
+adl_elem_delete(adlist_t *const list, adelem_t *const elem, LW_IN lw_bool_t need_pin)
 {
     adl_remove_result_t res = ADL_REMOVE_SUCCESS;
 
@@ -400,7 +398,7 @@ adl_elem_delete(adlist_t *const list, adelem_t *const elem, IN dd_bool_t need_pi
             adl_remove_elem_do(list, elem);
             return TRUE;
         default:
-            dd_panic("Unknown remove result %d\n", res);
+            lw_verify(FALSE);
     }
     /* Cannot get here but Windows compiler is stupid enough to want a
      * return statement here.
@@ -417,21 +415,18 @@ typedef enum {
 typedef struct {
     adlist_t                *list;
     adelem_t                *current_elem;    /* iter is at this element */
-    dd_uint32_t             count;            /* number of elements iterated */
+    lw_uint32_t             count;            /* number of elements iterated */
     adl_iter_direction_t    direction;
-    dd_bool_t               return_current;   /* Set after iter_pop as the iterator
+    lw_bool_t               return_current;   /* Set after iter_pop as the iterator
                                                * internally advanced but the element
                                                * is not consumed yet.
                                                */
-#ifdef DD_DEBUG
-    void *leak_check;   /* Will trigger malloc leak if destroy is not called */
-#endif
 } adlist_iter_t;
 
 /* Initialize an adlist iter */
 extern void adlist_iter_init(adlist_iter_t *const iter,
                              adlist_t *const list,
-                             IN adl_iter_direction_t direction);
+                             LW_IN adl_iter_direction_t direction);
 
 /**
  * Return next element in iteration. Return NULL if done. The lock on the
@@ -441,8 +436,8 @@ extern void adlist_iter_init(adlist_iter_t *const iter,
 extern void *_adlist_iter_next(adlist_iter_t *const iter);
 
 /**
- * Pop the current element of the iterator off the list. The return value 
- * indicates if the pop was successful or not. Upon success, the iterator 
+ * Pop the current element of the iterator off the list. The return value
+ * indicates if the pop was successful or not. Upon success, the iterator
  * also advances, internally, to the next element that will be returned on
  * the next invocation of adlist_iter_next. Upon failure, there is no need
  * to internally advance the iterator. The caller doesn't need to worry
@@ -452,10 +447,10 @@ extern void *_adlist_iter_next(adlist_iter_t *const iter);
  * of the element and the setup needed. The finish operation will complete
  * the delete and advancing of iter.
  */
-extern dd_bool_t adlist_iter_pop_start(adlist_iter_t *const iter);
+extern lw_bool_t adlist_iter_pop_start(adlist_iter_t *const iter);
 extern void adlist_iter_pop_finish(adlist_iter_t *const iter);
 
-static inline dd_bool_t
+static inline lw_bool_t
 adlist_iter_pop(adlist_iter_t *const iter)
 {
     if (adlist_iter_pop_start(iter)) {
@@ -470,28 +465,11 @@ adlist_iter_pop(adlist_iter_t *const iter)
  * adlist_iter_next will return the element after it. Specify
  * need_pin to be TRUE if the given elem is unpinned currently.
  */
-extern dd_bool_t adlist_iter_seek(adlist_iter_t *const iter,
+extern lw_bool_t adlist_iter_seek(adlist_iter_t *const iter,
                                   adelem_t *const elem,
-                                  dd_bool_t need_pin);
+                                  lw_bool_t need_pin);
 
 extern void adlist_iter_destroy(adlist_iter_t *const iter);
-
-/*
- * Init/shutdown of global state for atomic lists.
- */
-extern void adlist_init(void);
-extern void adlist_shutdown(void);
-
-/*
- * Interface to register and dump stats of atomic lists.
- */
-extern void adlist_register(adlist_t *list);
-extern void adlist_unregister(adlist_t *list);
-extern void adlist_stats_str(adlist_t *list, char *buf, size_t size, size_t *len);
-extern void adlist_stats_str_all(char *buf, size_t size, size_t *len);
-extern void adlist_stats_print(adlist_t *list);
-extern void adlist_stats_reset(adlist_t *list);
-extern void adlist_stats_reset_all(void);
 
 #if defined(THIS_IS_DDR)
 

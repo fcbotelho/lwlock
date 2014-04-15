@@ -66,7 +66,7 @@ static void lw_dummyprintf(const char *format, ...)
 #include <assert.h>
 #define lw_assert(arg) assert(arg)
 #else
-#define lw_assert(arg) LW_UNUSED_PARAMETER(arg)
+#define lw_assert(arg)  /* nothing. */
 #endif
 
 #include "lw_compiler.h"

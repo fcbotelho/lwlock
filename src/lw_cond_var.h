@@ -20,7 +20,7 @@
 typedef struct lw_condvar_u {
     lw_mutex2b_t waitq_lock;
     lw_waiter_id_t waitq;
-} lw_condvar_t;
+} ALIGNED_PACKED(4) lw_condvar_t;
 
 #define DD_LWCONDVAR_INITIALIZER    { LW_MUTEX2B_INITIALIZER, LW_WAITER_ID_MAX }
 
