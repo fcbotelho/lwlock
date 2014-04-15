@@ -44,7 +44,7 @@ typedef union lw_rwlock_u {
         lw_uint16_t locked : 15;
         lw_waiter_id_t waitq;
     } lw_rwlock_init;
-} __attribute__ ((__packed__)) lw_rwlock_t;
+} ALIGNED_PACKED(4) lw_rwlock_t;
 
 typedef enum {
     LW_RWLOCK_SHARED        = 0x0,

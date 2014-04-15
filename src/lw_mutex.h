@@ -31,7 +31,7 @@ typedef union lw_mutex_u {
     };
     volatile lw_uint32_t val;
     lw_uint16_t fields_array[2];
-} __attribute__ ((__packed__)) lw_mutex_t;
+} ALIGNED_PACKED(4) lw_mutex_t;
 
 #define LW_MUTEX_INITIALIZER  { .lw_mutex_ow = { LW_WAITER_ID_MAX, LW_WAITER_ID_MAX} }
 

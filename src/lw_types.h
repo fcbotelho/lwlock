@@ -12,6 +12,10 @@
 
 #include <stdint.h>
 
+#define ALIGNED_PACKED(_a)      __attribute__((aligned(_a), packed))
+#define ALIGNED(_a)             __attribute__((aligned(_a)))
+#define PACKED                  __attribute__((packed))
+
 #define LW_IN const
 #define LW_OUT
 #define LW_INOUT

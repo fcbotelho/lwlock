@@ -52,7 +52,7 @@ typedef union {
         lw_waiter_id_t      wait_id;
     } fields;
     volatile lw_uint32_t    atomic;
-} adl_refcnt_t;
+} ALIGNED(4) adl_refcnt_t;
 
 /**
  * Generic List Element structure
