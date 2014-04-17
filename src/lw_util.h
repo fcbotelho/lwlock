@@ -41,4 +41,17 @@ lw_printbuf(char *buf, size_t len, size_t *pos, const char *fmt, ...)
         return 0;
     }
 }
+
+static inline void *
+lw_cast_no_const(const void *ptr)
+{
+    union {
+        const void *const_ptr;
+        void *ptr;
+    } tptr;
+
+    tptr.const_ptr = ptr;
+    return tptr.ptr;
+}
+
 #endif

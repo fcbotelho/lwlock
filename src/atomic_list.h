@@ -344,7 +344,7 @@ extern void adl_insert_elem_after(adlist_t *const list,
 
 
 #define adl_assert_elem_on_list(_list, elem) \
-    lw_assert((elem) == NULL || (elem)->adelem_list == _list)
+    lw_assert((elem) == NULL || (elem)->list == _list)
 
 /**
  * Pin an element so it does not get deleted.
@@ -352,14 +352,14 @@ extern void adl_insert_elem_after(adlist_t *const list,
 lw_bool_t adl_elem_pin(adelem_t *const elem);
 
 #define adl_assert_elem_is_pinned(elem) \
-    lw_assert((elem) == NULL || (elem)->adelem_refcnt.fields.aref_pin_count > 0)
+    lw_assert((elem) == NULL || (elem)->refcnt.fields.pin_count > 0)
 
 lw_bool_t adl_elem_not_on_any_list(adelem_t const *const elem);
 
 #define adl_assert_elem_is_pinned_or_masked(elem)                \
     lw_assert((elem) == NULL ||                                  \
-              (elem)->adelem_refcnt.fields.aref_pin_count > 0 || \
-              (elem)->adelem_refcnt.fields.aref_mask == 1)
+              (elem)->refcnt.fields.pin_count > 0 || \
+              (elem)->refcnt.fields.mask == 1)
 
 /**
  * Unpin an element previously returned as pinned by one of the calls

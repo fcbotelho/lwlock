@@ -13,7 +13,7 @@
 void lw_dl_init(LW_INOUT lw_dlist_t *list)
 {
 #ifdef LW_DEBUG
-    list->lw_dl_magic = LW_DL_INITIALIZED;
+    list->lw_dlist_magic = LW_DL_INITIALIZED;
 #endif
     list->lw_dlist_head = list->lw_dlist_tail = NULL;
     list->lw_dlist_count = 0;
@@ -22,7 +22,7 @@ void lw_dl_init(LW_INOUT lw_dlist_t *list)
 void lw_dl_destroy(LW_INOUT lw_dlist_t *list)
 {
 #ifdef LW_DEBUG
-    list->lw_dl_magic = 0;
+    list->lw_dlist_magic = 0;
 #endif
     list->lw_dlist_head = list->lw_dlist_tail = NULL;
     list->lw_dlist_count = 0;

@@ -1,9 +1,19 @@
 #!/bin/sh
+
+# usage:
+# to generate makefiles for non-debug build, run "./build_makefiles"
+# to generate makefiles for debug build, run "./build_makefiles LW_DEBUG"
+
 echo "./gendocs"
 ./gendocs
 
 echo "autoreconf -ifv"
 autoreconf -ifv
 
-echo "./configure"
-./configure
+if [ "$#" -eq 1 ] && [ "$1" = "LW_DEBUG" ]; then
+    echo "./configure --enable-debug"
+    ./configure --enable-debug
+else
+    echo "./configure"
+    ./configure
+fi
