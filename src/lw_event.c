@@ -67,9 +67,6 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
 {
     int ret = 0;
     lw_thread_event_t *event = LW_EVENT_2_THREAD_EVENT(_event);
-#ifdef LW_DEBUG
-    lw_assert(event->tid == lw_thread_self());
-#endif
     lw_assert(lw_thread_event_signal ==
               event->base.iface.signal);
     void *src = event->base.wait_src;
@@ -131,9 +128,7 @@ lw_thread_event_init(LW_INOUT lw_thread_event_t *thread_event)
 
     thread_event->signal_pending = FALSE;
     thread_event->waiter_waiting = FALSE;
-#ifdef LW_DEBUG
-    thread_event->tid = lw_thread_self();
-#endif
+
     lw_base_event_init(&thread_event->base,
                        lw_thread_event_signal,
                        lw_thread_event_wait,
@@ -149,7 +144,6 @@ lw_thread_event_destroy(LW_INOUT lw_thread_event_t *event)
     lw_verify(pthread_mutex_destroy(&event->mutex) == 0);
     lw_verify(pthread_cond_destroy(&event->cond) == 0);
 #ifdef LW_DEBUG
-    event->tid = NULL;
     event->base.iface.magic = 0;
 #endif
 }

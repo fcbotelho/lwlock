@@ -64,9 +64,6 @@ struct lw_thread_event_s {
     lw_bool_t        waiter_waiting;
     pthread_mutex_t  mutex;
     pthread_cond_t   cond;
-#ifdef LW_DEBUG
-    void             *tid;
-#endif
 };
 
 /*
@@ -78,9 +75,7 @@ lw_event_signal(LW_INOUT lw_event_t _event,
                 LW_INOUT void *arg)
 {
     lw_event_iface_t *event = LW_EVENT_2_IFACE(_event);
-#ifdef LW_DEBUG
     lw_assert(event->magic == LW_EVENT_MAGIC);
-#endif
     event->signal(event, arg);
 }
 
@@ -90,9 +85,7 @@ lw_event_timedwait(LW_INOUT lw_event_t _event,
                    LW_IN struct timespec *abstime)
 {
     lw_event_iface_t *event = LW_EVENT_2_IFACE(_event);
-#ifdef LW_DEBUG
-    lw_asserta(event->magic == LW_EVENT_MAGIC);
-#endif
+    lw_assert(event->magic == LW_EVENT_MAGIC);
     return event->wait(event, arg, abstime);
 }
 
@@ -109,9 +102,7 @@ lw_event_wakeup_pending(LW_INOUT lw_event_t _event,
                         LW_INOUT void *arg)
 {
     lw_event_iface_t *event = LW_EVENT_2_IFACE(_event);
-#ifdef LW_DEBUG
     lw_assert(event->magic == LW_EVENT_MAGIC);
-#endif
     return event->wakeup_pending(event, arg);
 }
 static inline void

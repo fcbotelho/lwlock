@@ -92,6 +92,23 @@ else
     AC_MSG_ERROR([POSIX multithreading support disabled])
 fi
 
+# whether or not to use debug build
+AC_ARG_ENABLE([debug],
+                AS_HELP_STRING([--enable-debug], [enable debugging, default: no]),
+                [case "${enableval}" in
+                             yes) x_debug=true ;;
+                             no)  x_debug=false ;;
+                             *)   AC_MSG_ERROR([bad value ${enableval} for --enable-debug]) ;;
+                esac],
+                [x_debug=false])
+echo "x_debug = $x_debug"
+if test "$x_debug" = true; then
+    AC_MSG_NOTICE(LW_DEBUG enabled)
+    CFLAGS="-DLW_DEBUG $CFLAGS"
+else
+    AC_MSG_NOTICE(LW_DEBUG disabled)
+fi
+
 dnl Handle --disable-asm, --enable-asm=x86, --enable-asm=amd64
 AC_ARG_ENABLE([asm],
 	[AS_HELP_STRING([--disable-asm],[disable optimized x86/amd64/padlock/intelaes assembler code])],

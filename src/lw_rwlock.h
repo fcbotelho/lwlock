@@ -141,7 +141,7 @@ lw_rwlock_wrunlock(LW_INOUT lw_rwlock_t *rwlock)
 static inline void
 lw_rwlock_assert_rdlocked(LW_IN lw_rwlock_t *rwlock)
 {
-    lw_assert(rwlock->lw_rwlock_readers != 0);
+    lw_assert(rwlock->readers != 0);
 }
 #else
 #define lw_rwlock_assert_rdlocked(rwlock) LW_UNUSED_PARAMETER(rwlock)
@@ -151,7 +151,7 @@ lw_rwlock_assert_rdlocked(LW_IN lw_rwlock_t *rwlock)
 static inline void
 lw_rwlock_assert_wrlocked(LW_IN lw_rwlock_t *rwlock)
 {
-    lw_assert(rwlock->lw_rwlock_wlocked != 0);
+    lw_assert(rwlock->wlocked != 0);
 }
 #else
 #define lw_rwlock_assert_wrlocked(rwlock) LW_UNUSED_PARAMETER(rwlock)
@@ -159,9 +159,9 @@ lw_rwlock_assert_wrlocked(LW_IN lw_rwlock_t *rwlock)
 
 #ifdef LW_DEBUG
 static inline void
-lw_rwlock_assert_locked(LW_IN lw_rwlock_t *rwlock)
+lw_rwlock_assert_locked(LW_INOUT lw_rwlock_t *rwlock)
 {
-    lw_assert((rwlock->lw_rwlock_readers != 0) || (rwlock->lw_rwlock_wlocked != 0));
+    lw_assert((rwlock->readers != 0) || (rwlock->wlocked != 0));
     lw_assert(lw_rwlock_trywrlock(rwlock) != 0);
 }
 #else
@@ -172,7 +172,7 @@ lw_rwlock_assert_locked(LW_IN lw_rwlock_t *rwlock)
 static inline void
 lw_rwlock_assert_unlocked(LW_IN lw_rwlock_t *rwlock)
 {
-    lw_assert(lock->lw_rwlock_locked == 0);
+    lw_assert(rwlock->locked == 0);
 }
 #else
 #define lw_rwlock_assert_unlocked(rwlock) UNUSED_PARAMETER(rwlock)

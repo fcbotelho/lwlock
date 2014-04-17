@@ -393,7 +393,7 @@ adl_init(adlist_t *const list,
          lw_waiter_domain_t *domain)
 {
 #ifdef LW_DEBUG
-    list->adl_magic = ADL_INITIALIZED;
+    list->magic = ADL_INITIALIZED;
     lw_atomic32_set(&list->refcnt, 0);
 #endif
     list->head = list->tail = NULL;
@@ -416,7 +416,7 @@ void
 adl_destroy(adlist_t *const list)
 {
 #ifdef LW_DEBUG
-    list->adl_magic = 0;
+    list->magic = 0;
     lw_verify(lw_atomic32_read(&list->refcnt) == 0);
 #endif
     lw_verify(lw_atomic32_read(&list->count) == 0);
@@ -483,7 +483,7 @@ adl_elem_init(adlist_t *const list,
      * If LW_DEBUG is set, update the list pointer so
      * that it is easily recognizable.
      */
-    elem->adelem_list = list;
+    elem->list = list;
 #else
     LW_UNUSED_PARAMETER(list);
 #endif
@@ -499,7 +499,7 @@ adl_elem_clear(adlist_t *const list, adelem_t *const elem)
 {
     int ret;
     LW_UNUSED_PARAMETER(ret); // for non-debug builds.
-    lw_assert(elem->adelem_list != ADL_DBG_BADLIST);
+    lw_assert(elem->list != ADL_DBG_BADLIST);
     /* elem must be locked */
     lw_assert(lw_rwlock_tryrdlock(&elem->lock) != 0);
     /* element must be masked and unpinned */
@@ -548,7 +548,7 @@ adl_elem_clear(adlist_t *const list, adelem_t *const elem)
     /*
      * If LW_DEBUG is set, update the list pointer.
      */
-    elem->adelem_list = ADL_DBG_BADLIST;
+    elem->list = ADL_DBG_BADLIST;
 #endif
     /* Unlock locks */
     adl_unlock(list, &elem->lock, ADL_LOCK_EXCLUSIVE);
@@ -573,7 +573,7 @@ adl_elem_not_on_any_list(adelem_t const *const elem)
 {
 #ifdef LW_DEBUG
     /* Can simply check if the list ptr is non-null */
-    if (elem->adelem_list != ADL_DBG_BADLIST) {
+    if (elem->list != ADL_DBG_BADLIST) {
         return FALSE;
     }
     lw_assert(elem->prev == ADL_DBG_BADELEM);
@@ -1002,7 +1002,7 @@ adl_remove_elem_wait(adlist_t *const list,
     if (waiter == NULL) {
         waiter = list->domain->get_waiter(list->domain);
     } else {
-        lw_assert(waiter->domain == list->adl_domain);
+        lw_assert(waiter->domain == list->domain);
     }
 
     lw_assert(waiter->next == LW_WAITER_ID_MAX);
@@ -1566,7 +1566,6 @@ adlist_iter_seek(adlist_iter_t *const iter,
                  lw_bool_t need_pin)
 {
     lw_assert(iter->list != NULL);
-    lw_assert(iter->leak_check != NULL);
     if (need_pin) {
         if (!adl_elem_pin(elem)) {
             return FALSE;
