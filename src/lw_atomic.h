@@ -416,8 +416,6 @@ lw_uint64_lock_xadd(LW_INOUT volatile lw_uint64_t *var,
 #endif
 
 
-
-
 /*
  * Alternative interface to lw_uint32_cmpxchg/lw_uint64_cmpxchg
  * which returns a bool to indicate if the swap occured. On failure,
@@ -425,7 +423,7 @@ lw_uint64_lock_xadd(LW_INOUT volatile lw_uint64_t *var,
  */
 static inline lw_bool_t __attribute__ ((always_inline))
 lw_uint64_swap(LW_INOUT lw_uint64_t volatile *var,
-               LW_INOUT lw_uint64_t volatile *old,
+               LW_INOUT lw_uint64_t *old,
                LW_IN lw_uint64_t new)
 {
     lw_uint64_t curval;
@@ -850,6 +848,78 @@ static inline lw_uint64_t __attribute__ ((always_inline))
 lw_atomic64_sub_with_ret(lw_atomic64_t *atomic, lw_uint64_t i)
 {
     return lw_uint64_lock_xsub(&atomic->val, i) - i;
+}
+
+/**
+ * Atomic cmpxchg for a sub-part of a 64-bit value.
+ *
+ * @param var (i) the input parameter specifying a pointer to the var being changed.
+ * @param mask (i) bits that are 1 in the mask remain untouched in the var.
+ * @param old (i) pointer to expected old value of the variable. Updated to current value.
+ * @param new (i) value to be assigned to the variable excluding bit covered by mask.
+ *
+ * @description
+ *
+ * Like lw_uint64_swap except bits that are 1 in the mask will remain unchanged.
+ *
+ * @return TRUE if value updated with new. FALSE otherwise. old is updated to current value on failure.
+ */
+static inline lw_bool_t __attribute__ ((always_inline))
+lw_uint64_swap_with_mask(LW_INOUT lw_uint64_t volatile *var,
+                         LW_IN lw_uint64_t mask,
+                         LW_INOUT lw_uint64_t volatile *old,
+                         LW_IN lw_uint64_t new)
+{
+    lw_uint64_t curval, newval;
+    lw_bool_t swapped;
+    lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
+
+    curval = *var;
+    curval = (curval & mask) | (*old & ~mask);
+    newval = (curval & mask) | (new & ~mask);
+    swapped = lw_uint64_swap(var, &curval, newval);
+    if (!swapped) {
+        /* Need to update old. */
+        *old = (curval & ~mask) | (*old & mask);
+        return FALSE;
+    }
+    return true;
+}
+
+/**
+ * Atomic cmpxchg for a sub-part of a 32-bit value.
+ *
+ * @param var (i) the input parameter specifying a pointer to the var being changed.
+ * @param mask (i) bits that are 1 in the mask remain untouched in the var.
+ * @param old (i) pointer to expected old value of the variable. Updated to current value.
+ * @param new (i) value to be assigned to the variable excluding bit covered by mask.
+ *
+ * @description
+ *
+ * Like lw_uint32_swap except bits that are 1 in the mask will remain unchanged.
+ *
+ * @return TRUE if value updated with new. FALSE otherwise. old is updated to current value on failure.
+ */
+static inline lw_bool_t __attribute__ ((always_inline))
+lw_uint32_swap_with_mask(LW_INOUT lw_uint32_t volatile *var,
+                         LW_IN lw_uint32_t mask,
+                         LW_INOUT lw_uint32_t volatile *old,
+                         LW_IN lw_uint32_t new)
+{
+    lw_uint32_t curval, newval;
+    lw_bool_t swapped;
+    lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
+
+    curval = *var;
+    curval = (curval & mask) | (*old & ~mask);
+    newval = (curval & mask) | (new & ~mask);
+    swapped = lw_uint32_swap(var, &curval, newval);
+    if (!swapped) {
+        /* Need to update old. */
+        *old = (curval & ~mask) | (*old & mask);
+        return FALSE;
+    }
+    return true;
 }
 
 #endif
