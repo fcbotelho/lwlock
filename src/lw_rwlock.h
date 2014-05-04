@@ -119,7 +119,7 @@ lw_rwlock_wrlock(LW_INOUT lw_rwlock_t *rwlock)
         lw_verify(lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_WAIT, NULL) == 0);
 }
 
-static inline int
+static inline lw_int32_t
 lw_rwlock_trywrlock(LW_INOUT lw_rwlock_t *rwlock)
 {
         return lw_rwlock_lock(rwlock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_NOWAIT, NULL);

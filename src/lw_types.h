@@ -15,6 +15,8 @@
 #define ALIGNED_PACKED(_a)      __attribute__((aligned(_a), packed))
 #define ALIGNED(_a)             __attribute__((aligned(_a)))
 #define PACKED                  __attribute__((packed))
+#define INLINE                  inline
+#define ALWAYS_INLINED          __attribute__ ((always_inline))
 
 #define LW_IN const
 #define LW_OUT
@@ -99,5 +101,13 @@ typedef lw_uint16_t lw_waiter_id_t;
 #define LW_PTR_2_NUM(__ptr, __type) ((__type)((uintptr_t)(__ptr)))
 #define LW_NUM_2_PTR(__num, __type) ((__type *)((uintptr_t)(__num)))
 
+#define LW_OFFSET_OF(_type, _field)         \
+    LW_PTR_2_NUM((&(((__typeof__(_type) *)0)->_field)), lw_uint64_t)
+
+#define LW_FIELD_2_OBJ(_ptr, _type, _field)  \
+    ((__typeof__(_type) *)((uintptr_t)(_ptr) - LW_OFFSET_OF(_type, _field)))
+
+#define LW_FIELD_2_OBJ_NULL_SAFE(_ptr, _type, _field)   \
+    ((_ptr) == NULL ? NULL : LW_FIELD_2_OBJ(_ptr, _type, _field))
 
 #endif
