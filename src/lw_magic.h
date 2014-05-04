@@ -49,6 +49,15 @@
 /*
  * Define a type that can be used in structures.
  */
-typedef lw_uint32_t lw_magic_t;
+typedef enum {
+    LW_DL_ON_LIST       = LW_MAGIC(0x1102), /**< lw_delem_t value when an element is on a list */
+    LW_DL_OFF_LIST      = LW_MAGIC(0x0913), /**< lw_delem_t value when an element is off lists */
+    LW_DL_INITIALIZED   = LW_MAGIC(0x0627), /**< lw_dlist_t value when it has been initialized */
+
+    ADL_INITIALIZED     = LW_MAGIC(0x7260), /**< dlist_t value when it has been initialized */
+    LW_EVENT_MAGIC      = LW_MAGIC(0x959),  /**< event magic. */
+
+    LF_STACK_MAGIC      = LW_MAGIC(0x51AC), /**< lock free stack. */
+} lw_magic_t;
 
 #endif /* __LW_MAGIC_H__ */

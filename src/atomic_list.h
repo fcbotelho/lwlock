@@ -35,10 +35,6 @@
  * then an external lock is required.
  */
 
-typedef enum {
-    ADL_INITIALIZED = LW_MAGIC(0x7260), /**< dlist_t value when it has been initialized */
-} atomic_dl_magic_t;
-
 /*
  * Forward reference for use within a list element structure.
  */
@@ -83,7 +79,7 @@ struct atomic_dlist_struct {
     char const               *name;
 #ifdef LW_DEBUG
     lw_atomic32_t            refcnt;   /**< To verify list is not destroyed prematurely */
-    atomic_dl_magic_t        magic;    /**< Set to DL_INITIALIZED when initialized */
+    lw_magic_t               magic;    /**< Set to DL_INITIALIZED when initialized */
 #endif
 };
 
