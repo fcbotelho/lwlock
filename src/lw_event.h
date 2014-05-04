@@ -38,8 +38,6 @@ typedef int (*lw_event_wait_func_t)(lw_event_t event,
                                     const struct timespec *abstime);
 typedef lw_bool_t (*lw_event_wakeup_pending_func_t)(lw_event_t event, void *arg);
 
-#define LW_EVENT_MAGIC      LW_MAGIC(0x959)
-
 struct lw_event_iface_s {
     lw_delem_t                      link;
 #ifdef LW_DEBUG

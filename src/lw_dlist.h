@@ -19,12 +19,6 @@
 #define LW_DL_DBG_BADELEM   ((lw_delem_t *)0xdeadbeef)
 #define LW_DL_DBG_BADLIST   ((lw_dlist_t *)0xfeedface)
 
-typedef enum {
-    LW_DL_ON_LIST     = LW_MAGIC(0x1102), /**< lw_delem_t value when an element is on a list */
-    LW_DL_OFF_LIST    = LW_MAGIC(0x0913), /**< lw_delem_t value when an element is off lists */
-    LW_DL_INITIALIZED = LW_MAGIC(0x0627), /**< lw_dlist_t value when it has been initialized */
-} lw_dl_magic_t;
-
 /*
  * Forward reference for use within a list element structure.
  */
@@ -37,8 +31,8 @@ typedef struct {
     void *lw_delem_next;    /**< Pointer to the next element in the list */
     void *lw_delem_prev;    /**< Pointer to the previous element in the list */
 #ifdef LW_DEBUG
-    lw_dlist_t *lw_delem_list;
-    lw_dl_magic_t lw_delem_magic;
+    lw_dlist_t *list;
+    lw_magic_t magic;
 #endif
 } lw_delem_t;
 
@@ -51,7 +45,7 @@ struct lw_dlist_struct {
     lw_delem_t *lw_dlist_tail;    /**< Pointer to the last element in the list */
     lw_uint32_t lw_dlist_count;   /**< Number of members in the list */
 #ifdef LW_DEBUG
-    lw_dl_magic_t lw_dlist_magic;
+    lw_magic_t lw_dlist_magic;
 #endif
 };
 

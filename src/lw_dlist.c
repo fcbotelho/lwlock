@@ -36,8 +36,8 @@ void lw_dl_init_elem(LW_INOUT lw_delem_t *elem)
      * If LW_DEBUG is set, update the list pointer and magic value so
      * that they are easily recognizable.
      */
-    elem->lw_delem_list = LW_DL_DBG_BADLIST;
-    elem->lw_delem_magic = LW_DL_OFF_LIST;
+    elem->list = LW_DL_DBG_BADLIST;
+    elem->magic = LW_DL_OFF_LIST;
 #endif
 }
 
@@ -59,8 +59,8 @@ lw_dl_append_at_end(LW_INOUT lw_dlist_t *list,
     list->lw_dlist_count++;
 
 #ifdef LW_DEBUG
-    elem->lw_delem_list = list;
-    elem->lw_delem_magic = LW_DL_ON_LIST;
+    elem->list = list;
+    elem->magic = LW_DL_ON_LIST;
 #endif
 }
 
@@ -73,8 +73,8 @@ void *lw_dl_dequeue(LW_INOUT lw_dlist_t *list)
 
     if (elem != NULL) {
 #ifdef LW_DEBUG
-        lw_assert((elem->lw_delem_magic == LW_DL_ON_LIST) &&
-                  (elem->lw_delem_list == list));
+        lw_assert((elem->magic == LW_DL_ON_LIST) &&
+                  (elem->list == list));
 #endif
         lw_assert(elem->lw_delem_prev == NULL);
 
