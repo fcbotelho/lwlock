@@ -124,7 +124,7 @@ static void
 lw_waiter_dealloc_all(LW_INOUT lw_waiter_global_domain_t *gd)
 {
     lw_uint32_t i;
-    lw_waiter_t *waiter;
+    lw_delem_t *elem;
     /*
      * TODO: need to create a wrapper around pthread_mutex_t that will be
      * called lw_pmutex_t and here we should assert that lw_waiter_global_domain_lock
@@ -132,7 +132,7 @@ lw_waiter_dealloc_all(LW_INOUT lw_waiter_global_domain_t *gd)
      */
     lw_verify(gd->lw_wgd_waiters_cnt != 0);
 
-    while ((waiter = lw_dl_dequeue(&gd->lw_wgd_free_list)) != NULL) {
+    while ((elem = lw_dl_dequeue(&gd->lw_wgd_free_list)) != NULL) {
         /* Do nothing */
     }
     lw_dl_destroy(&gd->lw_wgd_free_list);
@@ -193,7 +193,9 @@ lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain)
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
 
     pthread_mutex_lock(&lw_waiter_global_domain_lock);
-    waiter = lw_dl_dequeue(&gd->lw_wgd_free_list);
+    waiter = LW_FIELD_2_OBJ_NULL_SAFE(lw_dl_dequeue(&gd->lw_wgd_free_list), *waiter,
+                                      event.base.iface.link);
+
     if (waiter == NULL) {
         if (gd->lw_wgd_waiters_cnt == 0) {
             /* Global domain was shutodwn already */
@@ -201,7 +203,8 @@ lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain)
             return NULL;
         }
         lw_waiter_global_domain_alloc_one_array(gd);
-        waiter = lw_dl_dequeue(&gd->lw_wgd_free_list);
+        waiter = LW_FIELD_2_OBJ_NULL_SAFE(lw_dl_dequeue(&gd->lw_wgd_free_list), *waiter,
+                                          event.base.iface.link);
     }
     pthread_mutex_unlock(&lw_waiter_global_domain_lock);
 
