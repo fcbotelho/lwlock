@@ -153,6 +153,7 @@ lw_bitlock32_lock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_
         lw_dl_unlock_writer(wait_list);
         return;
     }
+    lw_assert(waiter->event.base.wait_src == NULL);
     waiter->event.base.wait_src = lock;
     waiter->event.base.tag = (lock_mask | wait_mask);
     lw_dl_unlock_writer(wait_list);
@@ -355,6 +356,7 @@ lw_bitlock64_lock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_
         lw_dl_unlock_writer(wait_list);
         return;
     }
+    lw_assert(waiter->event.base.wait_src == NULL);
     waiter->event.base.wait_src = lock;
     waiter->event.base.tag = (lock_mask | wait_mask);
     lw_dl_unlock_writer(wait_list);

@@ -56,9 +56,9 @@ lw_mutex_trylock(LW_INOUT lw_mutex_t *lw_mutex)
     return (got_lock ? 0 : EBUSY);
 }
 
-/* Lock an lw_mutex. */
-void
-lw_mutex_lock(LW_INOUT lw_mutex_t *lw_mutex)
+/* Lock an lw_mutex with deferred wait. */
+lw_bool_t
+lw_mutex_lock_async(LW_INOUT lw_mutex_t *lw_mutex)
 {
     lw_mutex_t old;
     lw_mutex_t new;
@@ -87,14 +87,28 @@ lw_mutex_lock(LW_INOUT lw_mutex_t *lw_mutex)
                              &old.val,
                              new.val));
 
-    if (new.owner != waiter->id) {
-        /* Did not get lock. Must wait */
-        lw_assert(new.waitq == waiter->id);
-        lw_waiter_wait(waiter);
-        /* The thread waking this up will also transfer the lock to it.
-         * No need to retry getting the lock.
-         */
-        lw_verify(lw_mutex->owner == waiter->id);
+    return (new.owner == waiter->id);
+}
+
+void
+lw_mutex_lock_complete_wait(LW_INOUT lw_mutex_t *lw_mutex)
+{
+    lw_waiter_t *waiter;
+    waiter = lw_waiter_get();
+
+    lw_waiter_wait(waiter);
+    /* The thread waking this up will also transfer the lock to it.
+     * No need to retry getting the lock.
+     */
+    lw_verify(lw_mutex->owner == waiter->id);
+}
+
+/* Lock an lw_mutex. */
+void
+lw_mutex_lock(LW_INOUT lw_mutex_t *lw_mutex)
+{
+    if (!lw_mutex_lock_async(lw_mutex)) {
+        lw_mutex_lock_complete_wait(lw_mutex);
     }
 }
 
