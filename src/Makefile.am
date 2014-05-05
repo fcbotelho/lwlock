@@ -5,7 +5,9 @@ include_HEADERS = lw_lock.h \
 				  lw_mutex2b.h \
 				  lw_rwlock.h \
 				  lw_cond_var.h \
-				  atomic_list.h
+				  lw_bitlock.h \
+				  atomic_list.h \
+				  murmur.h
 
 liblwlock_la_SOURCES =  lw_lock.h \
                         lw_types.h \
@@ -33,6 +35,7 @@ liblwlock_la_SOURCES =  lw_lock.h \
 						lw_event.c \
 						lw_waiter.c \
 						lw_rwlock.c \
+						lw_bitlock.c \
 						atomic_list.c
 
 liblwlock_la_LDFLAGS = -version-info 0:0:0

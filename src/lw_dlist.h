@@ -34,11 +34,11 @@ typedef struct lw_dlist_struct lw_dlist_t;
  * Generic List Element structure
  */
 typedef struct {
-    void *lw_delem_next;    /**< Pointer to the next element in the list */
-    void *lw_delem_prev;    /**< Pointer to the previous element in the list */
+    void *next;    /**< Pointer to the next element in the list */
+    void *prev;    /**< Pointer to the previous element in the list */
 #ifdef LW_DEBUG
-    lw_dlist_t *lw_delem_list;
-    lw_dl_magic_t lw_delem_magic;
+    lw_dlist_t *list;
+    lw_dl_magic_t magic;
 #endif
 } lw_delem_t;
 
@@ -47,9 +47,10 @@ typedef struct {
  * Generic List Head structure
  */
 struct lw_dlist_struct {
-    lw_delem_t *lw_dlist_head;    /**< Pointer to the first element in the list */
-    lw_delem_t *lw_dlist_tail;    /**< Pointer to the last element in the list */
-    lw_uint32_t lw_dlist_count;   /**< Number of members in the list */
+    lw_delem_t *head;    /**< Pointer to the first element in the list */
+    lw_delem_t *tail;    /**< Pointer to the last element in the list */
+    lw_uint32_t count;   /**< Number of members in the list */
+    lw_uint32_t _lock;   /**< Treated as lw_rwlock_t for locking. */
 #ifdef LW_DEBUG
     lw_dl_magic_t lw_dlist_magic;
 #endif
@@ -97,7 +98,21 @@ lw_dl_append_at_end(LW_INOUT lw_dlist_t *list,
  * @return A pointer to the first element in the list if the list is
  *         not empty or a NULL pointer if the list is empty.
  */
-extern void *lw_dl_dequeue(LW_INOUT lw_dlist_t *list);
+extern lw_delem_t *lw_dl_dequeue(LW_INOUT lw_dlist_t *list);
+
+extern lw_uint32_t lw_dl_get_count(LW_IN lw_dlist_t *list);
+extern lw_delem_t *lw_dl_next(LW_IN lw_dlist_t *list, lw_delem_t *elem);
+extern lw_delem_t *lw_dl_prev(LW_IN lw_dlist_t *list, lw_delem_t *elem);
+extern void lw_dl_insert_before(LW_INOUT lw_dlist_t *list, lw_delem_t *existing, lw_delem_t *new);
+extern void lw_dl_insert_after(LW_INOUT lw_dlist_t *list, lw_delem_t *existing, lw_delem_t *new);
+extern void lw_dl_remove(LW_INOUT lw_dlist_t *list, lw_delem_t *elem);
+
+extern void lw_dl_lock_writer(LW_INOUT lw_dlist_t *list);
+extern void lw_dl_unlock_writer(LW_INOUT lw_dlist_t *list);
+extern lw_int32_t lw_dl_trylock_writer(LW_INOUT lw_dlist_t *list);
+extern void lw_dl_lock_reader(LW_INOUT lw_dlist_t *list);
+extern void lw_dl_unlock_reader(LW_INOUT lw_dlist_t *list);
+extern lw_int32_t lw_dl_trylock_reader(LW_INOUT lw_dlist_t *list);
 
 #endif
 
