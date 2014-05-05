@@ -133,10 +133,9 @@ lw_waiter_global_event_init(LW_INOUT lw_waiter_domain_t *domain,
     ret = pthread_condattr_init(&cond_attr);
     lw_verify(ret == 0);
 
-//     #define CLOCK_MONOTONIC 1
-//     ret = pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
-//     lw_verify(ret == 0);
-//
+    ret = pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    lw_verify(ret == 0);
+
     ret = pthread_cond_init(&thread_event->cond, &cond_attr);
     lw_verify(ret == 0);
     ret = pthread_condattr_destroy(&cond_attr);
