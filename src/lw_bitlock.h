@@ -30,6 +30,9 @@ void lw_bitlock_deinit(void);
 void
 lw_bitlock32_lock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_bit_idx, LW_IN lw_uint32_t wait_bit_idx);
 
+lw_int32_t
+lw_bitlock32_trylock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_bit_idx, LW_IN lw_uint32_t wait_bit_idx);
+
 void
 lw_bitlock32_unlock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_bit_idx, LW_IN lw_uint32_t wait_bit_idx);
 
@@ -42,6 +45,9 @@ lw_bitlock32_swap_payload(lw_uint32_t *lock,
 
 void
 lw_bitlock64_lock(lw_uint64_t *lock, LW_IN lw_uint32_t lock_bit_idx, LW_IN lw_uint32_t wait_bit_idx);
+
+lw_int32_t
+lw_bitlock64_trylock(lw_uint64_t *lock, LW_IN lw_uint32_t lock_bit_idx, LW_IN lw_uint32_t wait_bit_idx);
 
 void
 lw_bitlock64_unlock(lw_uint64_t *lock, LW_IN lw_uint32_t lock_bit_idx, LW_IN lw_uint32_t wait_bit_idx);
