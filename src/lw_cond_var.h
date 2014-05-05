@@ -22,7 +22,7 @@ typedef struct lw_condvar_u {
     lw_waiter_id_t waitq;
 } ALIGNED_PACKED(4) lw_condvar_t;
 
-#define DD_LWCONDVAR_INITIALIZER    { LW_MUTEX2B_INITIALIZER, LW_WAITER_ID_MAX }
+#define LW_CONDVAR_INITIALIZER    { LW_MUTEX2B_INITIALIZER, LW_WAITER_ID_MAX }
 
 static inline void
 lw_condvar_init(LW_INOUT lw_condvar_t *lwcondvar)

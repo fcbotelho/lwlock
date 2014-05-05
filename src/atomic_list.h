@@ -467,8 +467,6 @@ extern lw_bool_t adlist_iter_seek(adlist_iter_t *const iter,
 
 extern void adlist_iter_destroy(adlist_iter_t *const iter);
 
-#if defined(THIS_IS_DDR)
-
 #define _ADL_ITEM_FROM_LINK(_linkp, _type, _member)      \
 (\
 { \
@@ -476,22 +474,6 @@ extern void adlist_iter_destroy(adlist_iter_t *const iter);
     (_lp == NULL ? NULL : (_type *)(_lp - offsetof(_type, _member)));\
 }                                                          \
 )
-
-#else
-
-#undef offsetof
-#define offsetof(_type, _member) ((uintptr_t)(&((_type *)0)->_member))
-
-static inline void * __attribute__ ((always_inline))
-_adl_addr_from_member(char * lp, uintptr_t off)
-{
-    return (lp == NULL ? NULL : (lp - off));
-}
-
-#define _ADL_ITEM_FROM_LINK(_linkp, _type, _member)      \
-    (_type *)_adl_addr_from_member((_linkp), offsetof(_type, _member))
-
-#endif
 
 #define ADL_NEXT(_listp, _itemp, _type, _member)                   \
     _ADL_ITEM_FROM_LINK(_adl_next(_listp, &((_itemp)->_member)), _type, _member)
