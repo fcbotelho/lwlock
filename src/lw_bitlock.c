@@ -10,6 +10,7 @@
 #include "lw_bitlock.h"
 #include "lw_waiter.h"
 #include "murmur.h"
+#include <errno.h>
 
 #define MURMUR_SEED                     (0xa0f12ab7)    /* Something random. */
 #define LW_BITLOCK_PTR_HASH32(_ptr)     Murmur3Ptr(_ptr, MURMUR_SEED)
@@ -159,6 +160,29 @@ lw_bitlock32_lock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_
     lw_assert(*lock & lock_mask);
     waiter->event.base.wait_src = NULL;
     return;
+}
+
+/**
+ * Try to acquire a bitlock.
+ *
+ * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
+ * @param lock_bit_idx (i) the bit that represents lock being held.
+ * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
+ */
+lw_int32_t
+lw_bitlock32_trylock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_bit_idx)
+{
+    lw_uint32_t lock_mask = (1 << lock_bit_idx);
+    lw_uint32_t wait_mask = (1 << wait_bit_idx);
+
+    lw_assert(lock_bit_idx != wait_bit_idx);
+    lw_assert(lock_bit_idx < 32 && wait_bit_idx < 32);
+
+    if (lw_bitlock32_set_lock_bit(lock, lock_mask, wait_mask, FALSE)) {
+        return 0;
+    }
+    return EBUSY;
 }
 
 /**
@@ -338,6 +362,29 @@ lw_bitlock64_lock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_
     lw_assert(*lock & lock_mask);
     waiter->event.base.wait_src = NULL;
     return;
+}
+
+/**
+ * Try to acquire a bitlock.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_bit_idx (i) the bit that represents lock being held.
+ * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
+ */
+lw_int32_t
+lw_bitlock64_trylock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_bit_idx)
+{
+    lw_uint64_t lock_mask = (1 << lock_bit_idx);
+    lw_uint64_t wait_mask = (1 << wait_bit_idx);
+
+    lw_assert(lock_bit_idx != wait_bit_idx);
+    lw_assert(lock_bit_idx < 64 && wait_bit_idx < 64);
+
+    if (lw_bitlock64_set_lock_bit(lock, lock_mask, wait_mask, FALSE)) {
+        return 0;
+    }
+    return EBUSY;
 }
 
 /**
