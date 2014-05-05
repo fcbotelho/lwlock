@@ -34,7 +34,6 @@ liblwlock_la_SOURCES =  lw_lock.h \
 						lw_atomic.c \
 						lw_cycles.c \
 						lw_dlist.c \
-						lw_event.c \
 						lw_waiter.c \
 						lw_rwlock.c \
 						lf_stack.c

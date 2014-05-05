@@ -65,7 +65,7 @@ lw_mutex_lock_async(LW_INOUT lw_mutex_t *lw_mutex)
     lw_waiter_t *waiter;
 
     waiter = lw_waiter_get();
-    lw_assert(waiter->event.base.wait_src == NULL);
+    lw_assert(waiter->event.wait_src == NULL);
     lw_assert(waiter->next == LW_WAITER_ID_MAX);
     lw_assert(waiter->prev == LW_WAITER_ID_MAX);
     old = *lw_mutex;
@@ -76,11 +76,11 @@ lw_mutex_lock_async(LW_INOUT lw_mutex_t *lw_mutex)
             lw_assert(old.waitq == LW_WAITER_ID_MAX);
             new.owner = waiter->id;
             waiter->next = LW_WAITER_ID_MAX;
-            waiter->event.base.wait_src = NULL;
+            waiter->event.wait_src = NULL;
         } else {
             lw_verify(old.owner != waiter->id);
             waiter->next = old.waitq;
-            waiter->event.base.wait_src = lw_mutex;
+            waiter->event.wait_src = lw_mutex;
             new.waitq = waiter->id;
         }
     } while (!lw_uint32_swap(&lw_mutex->val,
@@ -163,14 +163,14 @@ lw_mutex_setup_prev_id_pointers(LW_INOUT lw_mutex_t *lw_mutex,
 
     lw_assert(waiter_id < LW_WAITER_ID_MAX);
     waiter = lw_waiter_from_id(waiter_id);
-    lw_assert(waiter->event.base.wait_src == lw_mutex);
+    lw_assert(waiter->event.wait_src == lw_mutex);
     while (waiter->next != LW_WAITER_ID_MAX) {
         next_waiter = lw_waiter_from_id(waiter->next);
         lw_assert(next_waiter->prev == LW_WAITER_ID_MAX ||
                   next_waiter->prev == waiter->id);
         next_waiter->prev = waiter->id;
         waiter = next_waiter;
-        lw_assert(waiter->event.base.wait_src == lw_mutex);
+        lw_assert(waiter->event.wait_src == lw_mutex);
     }
     *lastwaiterp = waiter;
     return;

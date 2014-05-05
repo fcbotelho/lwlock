@@ -26,7 +26,7 @@ typedef struct {
     lw_waiter_id_t     next;      /* Id of next struct when in list */
     lw_waiter_id_t     prev;      /* Id of prev struct when in list */
     lw_bool_t          initialized; /* Structure is valid and initialized */
-    lw_thread_event_t  event;     /* Event to synchronize on */
+    lw_base_event_t    event;     /* Event to synchronize on */
 } lw_waiter_t;
 
 typedef lw_waiter_t *
@@ -42,18 +42,21 @@ typedef lw_waiter_t *
 (*lw_waiter_from_id_func_t)(LW_INOUT lw_waiter_domain_t *domain,
                             LW_IN lw_uint32_t id);
 typedef void
-(*lw_thread_event_init_func_t)(LW_INOUT lw_thread_event_t *thread_event);
+(*lw_waiter_event_init_func_t)(LW_INOUT lw_waiter_domain_t *domain,
+                               LW_INOUT lw_waiter_t *waiter);
 
 typedef void
-(*lw_thread_event_destroy_func_t)(LW_INOUT lw_thread_event_t *thread_event);
+(*lw_waiter_event_destroy_func_t)(LW_INOUT lw_waiter_domain_t *domain,
+                                  LW_INOUT lw_waiter_t *waiter);
 
 struct lw_waiter_domain_s {
     lw_waiter_alloc_func_t    alloc_waiter;
     lw_waiter_free_func_t     free_waiter;
     lw_waiter_get_func_t      get_waiter;
     lw_waiter_from_id_func_t  id2waiter;
-    lw_thread_event_init_func_t thread_event_init;
-    lw_thread_event_destroy_func_t thread_event_destroy;
+    lw_waiter_event_init_func_t waiter_event_init;
+    lw_waiter_event_destroy_func_t waiter_event_destroy;
+    lw_uint32_t               waiter_size;
     void                      *opaque;
 };
 
@@ -88,14 +91,14 @@ lw_waiter_from_id(LW_IN lw_uint32_t id)
 static inline void
 lw_waiter_assert_src(LW_IN lw_waiter_t *waiter, void *wait_src)
 {
-    lw_assert(waiter->event.base.wait_src == wait_src);
+    lw_assert(waiter->event.wait_src == wait_src);
 }
 
 static inline void
 lw_waiter_wait(LW_INOUT lw_waiter_t *waiter)
 {
     lw_event_wait(&waiter->event,
-                  waiter->event.base.wait_src);
+                  waiter->event.wait_src);
 }
 
 static inline int
@@ -103,7 +106,7 @@ lw_waiter_timedwait(LW_INOUT lw_waiter_t *waiter,
                     LW_IN struct timespec *abstime)
 {
     return lw_event_timedwait(&waiter->event,
-                              waiter->event.base.wait_src,
+                              waiter->event.wait_src,
                               abstime);
 }
 

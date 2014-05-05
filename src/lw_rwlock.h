@@ -46,6 +46,8 @@ typedef union lw_rwlock_u {
     } lw_rwlock_init;
 } ALIGNED_PACKED(4) lw_rwlock_t;
 
+LW_STATIC_ASSERT(sizeof(lw_rwlock_t) == sizeof(lw_uint32_t), rwlock_must_be_32_bit);
+
 typedef enum {
     LW_RWLOCK_SHARED        = 0x0,
     LW_RWLOCK_WAIT          = 0x0, /* Blocking lock. */

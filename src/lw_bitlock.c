@@ -147,19 +147,19 @@ lw_bitlock32_lock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_
     wait_list = &wait_lists[wait_list_idx];
     waiter = lw_waiter_get();
     lw_dl_lock_writer(wait_list);
-    lw_dl_append_at_end(wait_list, &waiter->event.base.iface.link);
+    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
     got_lock = lw_bitlock32_set_lock_bit(lock, lock_mask, wait_mask, TRUE);
     if (got_lock) {
         lw_dl_unlock_writer(wait_list);
         return;
     }
-    lw_assert(waiter->event.base.wait_src == NULL);
-    waiter->event.base.wait_src = lock;
-    waiter->event.base.tag = (lock_mask | wait_mask);
+    lw_assert(waiter->event.wait_src == NULL);
+    waiter->event.wait_src = lock;
+    waiter->event.tag = (lock_mask | wait_mask);
     lw_dl_unlock_writer(wait_list);
     lw_waiter_wait(waiter);
     lw_assert(*lock & lock_mask);
-    waiter->event.base.wait_src = NULL;
+    waiter->event.wait_src = NULL;
     return;
 }
 
@@ -221,8 +221,8 @@ lw_bitlock32_unlock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wai
     lw_dl_lock_writer(wait_list);
     elem = wait_list->head;
     while (elem != NULL) {
-        lw_waiter_t *waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.base.iface.link);
-        if (waiter->event.base.wait_src == lock && waiter->event.base.tag == mask) {
+        lw_waiter_t *waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.iface.link);
+        if (waiter->event.wait_src == lock && waiter->event.tag == mask) {
             /* Found a waiter. */
             if (to_wake_up == NULL) {
                 to_wake_up = waiter;
@@ -234,7 +234,7 @@ lw_bitlock32_unlock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wai
         elem = lw_dl_next(wait_list, elem);
     }
     lw_assert(to_wake_up != NULL);
-    lw_dl_remove(wait_list, &to_wake_up->event.base.iface.link);
+    lw_dl_remove(wait_list, &to_wake_up->event.iface.link);
     if (!multiple_waiters)  {
         /* Clear wait bit while holding wait list lock to prevent new waiters from setting it again. */
         lw_bitlock32_clear_wait_mask(lock, lock_mask, wait_mask);
@@ -350,19 +350,19 @@ lw_bitlock64_lock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_
     wait_list = &wait_lists[wait_list_idx];
     waiter = lw_waiter_get();
     lw_dl_lock_writer(wait_list);
-    lw_dl_append_at_end(wait_list, &waiter->event.base.iface.link);
+    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
     got_lock = lw_bitlock64_set_lock_bit(lock, lock_mask, wait_mask, TRUE);
     if (got_lock) {
         lw_dl_unlock_writer(wait_list);
         return;
     }
-    lw_assert(waiter->event.base.wait_src == NULL);
-    waiter->event.base.wait_src = lock;
-    waiter->event.base.tag = (lock_mask | wait_mask);
+    lw_assert(waiter->event.wait_src == NULL);
+    waiter->event.wait_src = lock;
+    waiter->event.tag = (lock_mask | wait_mask);
     lw_dl_unlock_writer(wait_list);
     lw_waiter_wait(waiter);
     lw_assert(*lock & lock_mask);
-    waiter->event.base.wait_src = NULL;
+    waiter->event.wait_src = NULL;
     return;
 }
 
@@ -424,8 +424,8 @@ lw_bitlock64_unlock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wai
     lw_dl_lock_writer(wait_list);
     elem = wait_list->head;
     while (elem != NULL) {
-        lw_waiter_t *waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.base.iface.link);
-        if (waiter->event.base.wait_src == lock && waiter->event.base.tag == mask) {
+        lw_waiter_t *waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.iface.link);
+        if (waiter->event.wait_src == lock && waiter->event.tag == mask) {
             /* Found a waiter. */
             if (to_wake_up == NULL) {
                 to_wake_up = waiter;
@@ -437,7 +437,7 @@ lw_bitlock64_unlock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wai
         elem = lw_dl_next(wait_list, elem);
     }
     lw_assert(to_wake_up != NULL);
-    lw_dl_remove(wait_list, &to_wake_up->event.base.iface.link);
+    lw_dl_remove(wait_list, &to_wake_up->event.iface.link);
     if (!multiple_waiters)  {
         /* Clear wait bit while holding wait list lock to prevent new waiters from setting it again. */
         lw_bitlock64_clear_wait_mask(lock, lock_mask, wait_mask);

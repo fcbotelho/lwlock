@@ -35,7 +35,7 @@ lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
     int wait_result = 0;
 
     waiter = lw_waiter_get();
-    lw_assert(waiter->event.base.wait_src == NULL);
+    lw_assert(waiter->event.wait_src == NULL);
     lw_assert(waiter->next == LW_WAITER_ID_MAX);
     lw_mutex2b_lock(&lwcondvar->waitq_lock);
     if (lwcondvar->waitq == LW_WAITER_ID_MAX) {
@@ -51,7 +51,7 @@ lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
         existing_waiter->next = waiter->id;
         waiter->prev = existing_waiter->id;
     }
-    waiter->event.base.wait_src = lwcondvar;
+    waiter->event.wait_src = lwcondvar;
     lw_mutex2b_unlock(&lwcondvar->waitq_lock);
     /* Now drop the mutex and wait */
     lw_lock_common_drop_lock(_mutex, type);
@@ -75,7 +75,7 @@ lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
                 lwcondvar->waitq = waiter->next;
             }
             lw_waiter_remove_from_id_list(waiter);
-            waiter->event.base.wait_src = NULL;
+            waiter->event.wait_src = NULL;
         }
         lw_mutex2b_unlock(&lwcondvar->waitq_lock);
         if (got_signal_while_timing_out) {

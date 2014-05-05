@@ -99,7 +99,7 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
          * (which explicitly tracks owner) instead.
          */
         lw_verify(oldest_waiter == NULL ||
-                  oldest_waiter->event.base.wait_src != lw_mutex2b ||
+                  oldest_waiter->event.wait_src != lw_mutex2b ||
                   oldest_waiter->next != waiter->id);
     }
 #endif
@@ -108,7 +108,7 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
         old = *lw_mutex2b;
         lw_assert(old != waiter->id);
         waiter->next = old;
-        waiter->event.base.wait_src = lw_mutex2b;
+        waiter->event.wait_src = lw_mutex2b;
     } while (lw_uint16_cmpxchg(lw_mutex2b, old, waiter->id) != old);
 
     if (old != LW_WAITER_ID_MAX) {
@@ -120,7 +120,7 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
         lw_mutex2b_assert_locked(lw_mutex2b);
     } else {
         /* Clear the wait_src pointer set earlier */
-        waiter->event.base.wait_src = NULL;
+        waiter->event.wait_src = NULL;
     }
 }
 
@@ -184,7 +184,7 @@ lw_mutex2b_assert_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b)
     }
     oldest_waiter = lw_mutex2b_find_oldest_waiter(old, waiter->id);
     lw_assert((oldest_waiter->next == waiter->id) &&
-              (oldest_waiter->event.base.wait_src == lw_mutex2b));
+              (oldest_waiter->event.wait_src == lw_mutex2b));
 }
 void
 lw_mutex2b_assert_not_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b)
@@ -204,7 +204,7 @@ lw_mutex2b_assert_not_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b)
      * not be waiting on this lw_mutex2b in that case.
      */
     lw_assert((oldest_waiter == NULL) ||
-              (oldest_waiter->event.base.wait_src != lw_mutex2b) ||
+              (oldest_waiter->event.wait_src != lw_mutex2b) ||
               (oldest_waiter->next != waiter->id));
 }
 #endif

@@ -15,7 +15,6 @@
 #include "lw_magic.h"
 #include <time.h>
 #include <sys/time.h>
-#include <pthread.h>
 
 /**
  * Simple binary event. This is meant to be used between 2 threads only, one of
@@ -23,13 +22,10 @@
  */
 typedef struct lw_event_iface_s  lw_event_iface_t;
 typedef struct lw_base_event_s   lw_base_event_t;
-typedef struct lw_thread_event_s lw_thread_event_t;
-
 
 typedef void * lw_event_t;
 #define LW_EVENT_2_IFACE(ev)            ((lw_event_iface_t *)(ev))
 #define LW_EVENT_2_BASE_EVENT(ev)       ((lw_base_event_t *)(ev))
-#define LW_EVENT_2_THREAD_EVENT(ev)     ((lw_thread_event_t *)(ev))
 #define LW_EVENT_SET(ev, evp)           ((ev) = (evp))
 
 typedef void (*lw_event_signal_func_t)(lw_event_t event, void *arg);
@@ -56,17 +52,8 @@ struct lw_base_event_s {
     lw_uint64_t       tag;      /* To be used by libraries using this struct */
 };
 
-struct lw_thread_event_s {
-    lw_base_event_t  base;
-    lw_bool_t        signal_pending;
-    lw_bool_t        waiter_waiting;
-    pthread_mutex_t  mutex;
-    pthread_cond_t   cond;
-};
-
 /*
- * Signal the private event structure of a thread so it will wake up and
- * continue.
+ * Signal the event structure so the owner thread can wake up and continue.
  */
 static inline void
 lw_event_signal(LW_INOUT lw_event_t _event,
