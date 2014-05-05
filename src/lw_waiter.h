@@ -21,12 +21,12 @@
 typedef struct lw_waiter_domain_s lw_waiter_domain_t;
 
 typedef struct {
-    lw_thread_event_t  event;     /* Event to synchronize on */
     lw_waiter_domain_t *domain;
     lw_waiter_id_t     id;        /* Id of this struct */
     lw_waiter_id_t     next;      /* Id of next struct when in list */
     lw_waiter_id_t     prev;      /* Id of prev struct when in list */
     lw_bool_t          initialized; /* Structure is valid and initialized */
+    lw_thread_event_t  event;     /* Event to synchronize on */
 } lw_waiter_t;
 
 typedef lw_waiter_t *
