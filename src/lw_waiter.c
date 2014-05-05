@@ -79,6 +79,9 @@ lw_waiter_global_domain_alloc_one_array(LW_INOUT lw_waiter_global_domain_t *gd)
     gd->lw_wgd_waiters_cnt++;
 }
 
+/* lw_thread_event_init and destory defined in lw_event.c as the default global functions. */
+extern void lw_thread_event_init(LW_INOUT lw_thread_event_t *thread_event);
+extern void lw_thread_event_destroy(LW_INOUT lw_thread_event_t *thread_event);
 
 void
 lw_waiter_domain_init_global(lw_waiter_domain_t *domain)
@@ -107,12 +110,11 @@ lw_waiter_domain_init_global(lw_waiter_domain_t *domain)
                                  lw_waiter_free) == 0);
 
     lw_global_waiters_domain.lw_wgd_domain.alloc_waiter = lw_waiter_domain_alloc_global;
-
     lw_global_waiters_domain.lw_wgd_domain.free_waiter = lw_waiter_domain_free_global;
-
     lw_global_waiters_domain.lw_wgd_domain.get_waiter = lw_waiter_domain_get_global;
-
     lw_global_waiters_domain.lw_wgd_domain.id2waiter = lw_waiter_domain_from_id_global;
+    lw_global_waiters_domain.lw_wgd_domain.thread_event_init = lw_thread_event_init;
+    lw_global_waiters_domain.lw_wgd_domain.thread_event_destroy = lw_thread_event_destroy;
 
     pthread_mutex_unlock(&lw_waiter_global_domain_lock);
 }

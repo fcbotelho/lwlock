@@ -103,6 +103,7 @@ lw_event_wakeup_pending(LW_INOUT lw_event_t _event,
     lw_assert(event->magic == LW_EVENT_MAGIC);
     return event->wakeup_pending(event, arg);
 }
+
 static inline void
 lw_base_event_init(LW_INOUT lw_base_event_t *base_event,
                    LW_INOUT lw_event_signal_func_t signal,
@@ -121,12 +122,6 @@ lw_base_event_init(LW_INOUT lw_base_event_t *base_event,
     base_event->wait_src = NULL;
     base_event->tag = LW_MAX_UINT64;
 }
-
-extern void
-lw_thread_event_init(LW_INOUT lw_thread_event_t *thread_event);
-
-extern void
-lw_thread_event_destroy(LW_INOUT lw_thread_event_t *thread_event);
 
 #endif
 
