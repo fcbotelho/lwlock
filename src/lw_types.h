@@ -110,4 +110,5 @@ typedef lw_uint16_t lw_waiter_id_t;
 #define LW_FIELD_2_OBJ_NULL_SAFE(_ptr, _type, _field)   \
     ((_ptr) == NULL ? NULL : LW_FIELD_2_OBJ(_ptr, _type, _field))
 
+#define LW_IS_POW2(_x)          (((_x) & ((_x) - 1)) == 0)
 #endif

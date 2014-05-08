@@ -87,6 +87,7 @@ lw_bitlock32_set_lock_bit(lw_uint32_t *lock,
             new = lock_mask | wait_mask;
         } else {
             new = lock_mask;
+            lw_assert(!(old & wait_mask));
         }
     } while (!lw_uint32_swap_with_mask(lock, payload_mask, &old, new));
 
@@ -121,21 +122,20 @@ lw_bitlock32_clear_wait_mask(lw_uint32_t *lock,
  * Acquire a bitlock.
  *
  * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
- * @param lock_bit_idx (i) the bit that represents lock being held.
- * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
  */
 void
-lw_bitlock32_lock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_bit_idx)
+lw_bitlock32_lock(lw_uint32_t *lock, lw_uint32_t lock_mask, lw_uint32_t wait_mask)
 {
     lw_uint32_t wait_list_idx;
     lw_dlist_t *wait_list;
     lw_waiter_t *waiter;
-    lw_uint32_t lock_mask = (1 << lock_bit_idx);
-    lw_uint32_t wait_mask = (1 << wait_bit_idx);
     lw_bool_t got_lock;
 
-    lw_assert(lock_bit_idx != wait_bit_idx);
-    lw_assert(lock_bit_idx < 32 && wait_bit_idx < 32);
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
 
     got_lock = lw_bitlock32_set_lock_bit(lock, lock_mask, wait_mask, FALSE);
     if (got_lock) {
@@ -167,18 +167,16 @@ lw_bitlock32_lock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_
  * Try to acquire a bitlock.
  *
  * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
- * @param lock_bit_idx (i) the bit that represents lock being held.
- * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
  * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
  */
 lw_int32_t
-lw_bitlock32_trylock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_bit_idx)
+lw_bitlock32_trylock(lw_uint32_t *lock, lw_uint32_t lock_mask, lw_uint32_t wait_mask)
 {
-    lw_uint32_t lock_mask = (1 << lock_bit_idx);
-    lw_uint32_t wait_mask = (1 << wait_bit_idx);
-
-    lw_assert(lock_bit_idx != wait_bit_idx);
-    lw_assert(lock_bit_idx < 32 && wait_bit_idx < 32);
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
 
     if (lw_bitlock32_set_lock_bit(lock, lock_mask, wait_mask, FALSE)) {
         return 0;
@@ -187,27 +185,103 @@ lw_bitlock32_trylock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wa
 }
 
 /**
+ * Try to acquire a bitlock and set the payload to the provided value if the lock is acquired.
+ * If the curr_payload pointer is !NULL, the current value is returned regardless of whether
+ * the lock is acquired or not.
+ *
+ * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ * @param new_payload (i) the value to set payload to.
+ * @param curr_payload (o) if not NULL, the current value is returned here.
+ * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
+ */
+lw_int32_t
+lw_bitlock32_trylock_set_payload(lw_uint32_t *lock,
+                                 LW_IN lw_uint32_t lock_mask,
+                                 LW_IN lw_uint32_t wait_mask,
+                                 LW_IN lw_uint32_t new_payload,
+                                 LW_OUT lw_uint32_t *curr_payload)
+{
+    lw_uint32_t old, new;
+    lw_bool_t swapped = FALSE;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
+    lw_assert((lock_mask & new_payload) == 0);
+    lw_assert((wait_mask & new_payload) == 0);
+
+    new = new_payload | lock_mask;
+    old = *lock;
+    if ((old & lock_mask) == 0) {
+        lw_assert((old & wait_mask) == 0);
+        swapped = lw_uint32_swap(lock, &old, new);
+    }
+    if (curr_payload != NULL) {
+        *curr_payload = old;
+    }
+    return swapped ? 0 : EBUSY;
+}
+
+/**
+ * Try to acquire a bitlock only if the payload matches the current value.
+ * If the curr_payload pointer is !NULL, the current value is returned regardless of whether
+ * the lock is acquired or not.
+ *
+ * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ * @param payload (i) the value to set payload to.
+ * @param curr_payload (o) if not NULL, the current value is returned here.
+ * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
+ */
+lw_int32_t
+lw_bitlock32_trylock_if_payload(lw_uint32_t *lock,
+                                LW_IN lw_uint32_t lock_mask,
+                                LW_IN lw_uint32_t wait_mask,
+                                LW_IN lw_uint32_t payload,
+                                LW_OUT lw_uint32_t *curr_payload)
+{
+    lw_uint32_t new, old;
+    lw_bool_t swapped = FALSE;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
+    lw_assert((lock_mask & payload) == 0);
+    lw_assert((wait_mask & payload) == 0);
+
+    old = payload;
+    new = payload | lock_mask;
+    swapped = lw_uint32_swap(lock, &old, new);
+    if (curr_payload != NULL) {
+        *curr_payload = old;
+    }
+    return swapped ? 0 : EBUSY;
+}
+
+/**
  * Release a bitlock. If there are waiters, the 1st one is woken up and the lock handed over
  * to it.
  *
  * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
- * @param lock_bit_idx (i) the bit that represents lock being held.
- * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
  */
 void
-lw_bitlock32_unlock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_bit_idx)
+lw_bitlock32_unlock(lw_uint32_t *lock, lw_uint32_t lock_mask, lw_uint32_t wait_mask)
 {
     lw_uint32_t wait_list_idx;
     lw_dlist_t *wait_list;
     lw_waiter_t *to_wake_up = NULL;
     lw_delem_t *elem;
-    lw_uint32_t lock_mask = (1 << lock_bit_idx);
-    lw_uint32_t wait_mask = (1 << wait_bit_idx);
     lw_uint32_t mask = lock_mask | wait_mask;
     lw_bool_t multiple_waiters = FALSE;
 
-    lw_assert(lock_bit_idx != wait_bit_idx);
-    lw_assert(lock_bit_idx < 32 && wait_bit_idx < 32);
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
 
     if (lw_bitlock32_drop_lock_if_no_waiters(lock, lock_mask, wait_mask)) {
         /* All done. */
@@ -250,24 +324,23 @@ lw_bitlock32_unlock(lw_uint32_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wai
  * lock when calling this.
  *
  * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
- * @param lock_bit_idx (i) the bit that represents lock being held.
- * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
  * @param current_payload (i/o) the expected value of payload. Updated if swap fails.
  * @param new_payload (i) the new value of the payload should swap succeed.
  */
 lw_bool_t
 lw_bitlock32_swap_payload(lw_uint32_t *lock,
-                          lw_uint32_t lock_bit_idx,
-                          lw_uint32_t wait_bit_idx,
+                          lw_uint32_t lock_mask,
+                          lw_uint32_t wait_mask,
                           lw_uint32_t *current_payload,
                           lw_uint32_t new_payload)
 {
-    lw_uint32_t lock_mask = (1 << lock_bit_idx);
-    lw_uint32_t wait_mask = (1 << wait_bit_idx);
     lw_uint32_t mask =  lock_mask | wait_mask;
 
-    lw_assert(lock_bit_idx != wait_bit_idx);
-    lw_assert(lock_bit_idx < 32 && wait_bit_idx < 32);
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
 
     return lw_uint32_swap_with_mask(lock, mask, current_payload, new_payload);
 }
@@ -290,6 +363,7 @@ lw_bitlock64_set_lock_bit(lw_uint64_t *lock,
             new = lock_mask | wait_mask;
         } else {
             new = lock_mask;
+            lw_assert(!(old & wait_mask));
         }
     } while (!lw_uint64_swap_with_mask(lock, payload_mask, &old, new));
 
@@ -324,21 +398,20 @@ lw_bitlock64_clear_wait_mask(lw_uint64_t *lock,
  * Acquire a bitlock.
  *
  * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
- * @param lock_bit_idx (i) the bit that represents lock being held.
- * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
  */
 void
-lw_bitlock64_lock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_bit_idx)
+lw_bitlock64_lock(lw_uint64_t *lock, lw_uint64_t lock_mask, lw_uint64_t wait_mask)
 {
     lw_uint64_t wait_list_idx;
     lw_dlist_t *wait_list;
     lw_waiter_t *waiter;
-    lw_uint64_t lock_mask = (1 << lock_bit_idx);
-    lw_uint64_t wait_mask = (1 << wait_bit_idx);
     lw_bool_t got_lock;
 
-    lw_assert(lock_bit_idx != wait_bit_idx);
-    lw_assert(lock_bit_idx < 64 && wait_bit_idx < 64);
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
 
     got_lock = lw_bitlock64_set_lock_bit(lock, lock_mask, wait_mask, FALSE);
     if (got_lock) {
@@ -370,18 +443,16 @@ lw_bitlock64_lock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_
  * Try to acquire a bitlock.
  *
  * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
- * @param lock_bit_idx (i) the bit that represents lock being held.
- * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
  * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
  */
 lw_int32_t
-lw_bitlock64_trylock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_bit_idx)
+lw_bitlock64_trylock(lw_uint64_t *lock, lw_uint64_t lock_mask, lw_uint64_t wait_mask)
 {
-    lw_uint64_t lock_mask = (1 << lock_bit_idx);
-    lw_uint64_t wait_mask = (1 << wait_bit_idx);
-
-    lw_assert(lock_bit_idx != wait_bit_idx);
-    lw_assert(lock_bit_idx < 64 && wait_bit_idx < 64);
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
 
     if (lw_bitlock64_set_lock_bit(lock, lock_mask, wait_mask, FALSE)) {
         return 0;
@@ -390,27 +461,103 @@ lw_bitlock64_trylock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wa
 }
 
 /**
+ * Try to acquire a bitlock and set the payload to the provided value if the lock is acquired.
+ * If the curr_payload pointer is !NULL, the current value is returned regardless of whether
+ * the lock is acquired or not.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ * @param new_payload (i) the value to set payload to.
+ * @param curr_payload (o) if not NULL, the current value is returned here.
+ * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
+ */
+lw_int32_t
+lw_bitlock64_trylock_set_payload(lw_uint64_t *lock,
+                                 LW_IN lw_uint64_t lock_mask,
+                                 LW_IN lw_uint64_t wait_mask,
+                                 LW_IN lw_uint64_t new_payload,
+                                 LW_OUT lw_uint64_t *curr_payload)
+{
+    lw_uint64_t old, new;
+    lw_bool_t swapped = FALSE;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
+    lw_assert((lock_mask & new_payload) == 0);
+    lw_assert((wait_mask & new_payload) == 0);
+
+    new = new_payload | lock_mask;
+    old = *lock;
+    if ((old & lock_mask) == 0) {
+        lw_assert((old & wait_mask) == 0);
+        swapped = lw_uint64_swap(lock, &old, new);
+    }
+    if (curr_payload != NULL) {
+        *curr_payload = old;
+    }
+    return swapped ? 0 : EBUSY;
+}
+
+/**
+ * Try to acquire a bitlock only if the payload matches the current value.
+ * If the curr_payload pointer is !NULL, the current value is returned regardless of whether
+ * the lock is acquired or not.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ * @param payload (i) the value to set payload to.
+ * @param curr_payload (o) if not NULL, the current value is returned here.
+ * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
+ */
+lw_int32_t
+lw_bitlock64_trylock_if_payload(lw_uint64_t *lock,
+                                LW_IN lw_uint64_t lock_mask,
+                                LW_IN lw_uint64_t wait_mask,
+                                LW_IN lw_uint64_t payload,
+                                LW_OUT lw_uint64_t *curr_payload)
+{
+    lw_uint64_t new, old;
+    lw_bool_t swapped = FALSE;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
+    lw_assert((lock_mask & payload) == 0);
+    lw_assert((wait_mask & payload) == 0);
+
+    old = payload;
+    new = payload | lock_mask;
+    swapped = lw_uint64_swap(lock, &old, new);
+    if (curr_payload != NULL) {
+        *curr_payload = old;
+    }
+    return swapped ? 0 : EBUSY;
+}
+
+/**
  * Release a bitlock. If there are waiters, the 1st one is woken up and the lock handed over
  * to it.
  *
  * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
- * @param lock_bit_idx (i) the bit that represents lock being held.
- * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
  */
 void
-lw_bitlock64_unlock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wait_bit_idx)
+lw_bitlock64_unlock(lw_uint64_t *lock, lw_uint64_t lock_mask, lw_uint64_t wait_mask)
 {
     lw_uint64_t wait_list_idx;
     lw_dlist_t *wait_list;
     lw_waiter_t *to_wake_up = NULL;
     lw_delem_t *elem;
-    lw_uint64_t lock_mask = (1 << lock_bit_idx);
-    lw_uint64_t wait_mask = (1 << wait_bit_idx);
     lw_uint64_t mask = lock_mask | wait_mask;
     lw_bool_t multiple_waiters = FALSE;
 
-    lw_assert(lock_bit_idx != wait_bit_idx);
-    lw_assert(lock_bit_idx < 64 && wait_bit_idx < 64);
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
 
     if (lw_bitlock64_drop_lock_if_no_waiters(lock, lock_mask, wait_mask)) {
         /* All done. */
@@ -453,24 +600,24 @@ lw_bitlock64_unlock(lw_uint64_t *lock, lw_uint32_t lock_bit_idx, lw_uint32_t wai
  * lock when calling this.
  *
  * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
- * @param lock_bit_idx (i) the bit that represents lock being held.
- * @param wait_bit_idx (i) the bit that is set when waiting.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
  * @param current_payload (i/o) the expected value of payload. Updated if swap fails.
  * @param new_payload (i) the new value of the payload should swap succeed.
  */
 lw_bool_t
 lw_bitlock64_swap_payload(lw_uint64_t *lock,
-                          lw_uint32_t lock_bit_idx,
-                          lw_uint32_t wait_bit_idx,
+                          lw_uint64_t lock_mask,
+                          lw_uint64_t wait_mask,
                           lw_uint64_t *current_payload,
                           lw_uint64_t new_payload)
 {
-    lw_uint64_t lock_mask = (1 << lock_bit_idx);
-    lw_uint64_t wait_mask = (1 << wait_bit_idx);
     lw_uint64_t mask =  lock_mask | wait_mask;
 
-    lw_assert(lock_bit_idx != wait_bit_idx);
-    lw_assert(lock_bit_idx < 64 && wait_bit_idx < 64);
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
 
     return lw_uint64_swap_with_mask(lock, mask, current_payload, new_payload);
 }
+
