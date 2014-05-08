@@ -34,7 +34,12 @@ typedef struct {
 } lw_bitlock32_spec_t;
 
 void
-lw_bitlock32_lock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_mask, LW_IN lw_uint32_t wait_mask);
+lw_bitlock32_lock(lw_uint32_t *lock,
+                  LW_IN lw_uint32_t lock_mask,
+                  LW_IN lw_uint32_t wait_mask,
+                  LW_IN lw_bool_t sync);
+
+void lw_bitlock32_lock_complete_wait(lw_uint32_t *lock);
 
 lw_int32_t
 lw_bitlock32_trylock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_mask, LW_IN lw_uint32_t wait_mask);
@@ -70,7 +75,12 @@ typedef struct {
 } lw_bitlock64_spec_t;
 
 void
-lw_bitlock64_lock(lw_uint64_t *lock, LW_IN lw_uint64_t lock_mask, LW_IN lw_uint64_t wait_mask);
+lw_bitlock64_lock(lw_uint64_t *lock,
+                  LW_IN lw_uint64_t lock_mask,
+                  LW_IN lw_uint64_t wait_mask,
+                  LW_IN lw_bool_t sync);
+
+void lw_bitlock64_lock_complete_wait(lw_uint64_t *lock);
 
 lw_int32_t
 lw_bitlock64_trylock(lw_uint64_t *lock, LW_IN lw_uint64_t lock_mask, LW_IN lw_uint64_t wait_mask);

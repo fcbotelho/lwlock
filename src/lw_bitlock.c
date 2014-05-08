@@ -126,7 +126,10 @@ lw_bitlock32_clear_wait_mask(lw_uint32_t *lock,
  * @param wait_mask (i) the bit that is set when waiting.
  */
 void
-lw_bitlock32_lock(lw_uint32_t *lock, lw_uint32_t lock_mask, lw_uint32_t wait_mask)
+lw_bitlock32_lock(lw_uint32_t *lock,
+                  LW_IN lw_uint32_t lock_mask,
+                  LW_IN lw_uint32_t wait_mask,
+                  LW_IN lw_bool_t sync)
 {
     lw_uint32_t wait_list_idx;
     lw_dlist_t *wait_list;
@@ -157,10 +160,20 @@ lw_bitlock32_lock(lw_uint32_t *lock, lw_uint32_t lock_mask, lw_uint32_t wait_mas
     waiter->event.wait_src = lock;
     waiter->event.tag = (lock_mask | wait_mask);
     lw_dl_unlock_writer(wait_list);
-    lw_waiter_wait(waiter);
-    lw_assert(*lock & lock_mask);
-    waiter->event.wait_src = NULL;
+    if (sync) {
+        lw_waiter_wait(waiter);
+        lw_assert(*lock & lock_mask);
+        waiter->event.wait_src = NULL;
+    }
     return;
+}
+
+void
+lw_bitlock32_lock_complete_wait(lw_uint32_t *lock)
+{
+    lw_waiter_t *waiter = lw_waiter_get();
+    LW_UNUSED_PARAMETER(lock);
+    lw_waiter_wait(waiter);
 }
 
 /**
@@ -402,7 +415,10 @@ lw_bitlock64_clear_wait_mask(lw_uint64_t *lock,
  * @param wait_mask (i) the bit that is set when waiting.
  */
 void
-lw_bitlock64_lock(lw_uint64_t *lock, lw_uint64_t lock_mask, lw_uint64_t wait_mask)
+lw_bitlock64_lock(lw_uint64_t *lock,
+                  LW_IN lw_uint64_t lock_mask,
+                  LW_IN lw_uint64_t wait_mask,
+                  LW_IN lw_bool_t sync)
 {
     lw_uint64_t wait_list_idx;
     lw_dlist_t *wait_list;
@@ -433,10 +449,20 @@ lw_bitlock64_lock(lw_uint64_t *lock, lw_uint64_t lock_mask, lw_uint64_t wait_mas
     waiter->event.wait_src = lock;
     waiter->event.tag = (lock_mask | wait_mask);
     lw_dl_unlock_writer(wait_list);
-    lw_waiter_wait(waiter);
-    lw_assert(*lock & lock_mask);
-    waiter->event.wait_src = NULL;
+    if (sync) {
+        lw_waiter_wait(waiter);
+        lw_assert(*lock & lock_mask);
+        waiter->event.wait_src = NULL;
+    }
     return;
+}
+
+void
+lw_bitlock64_lock_complete_wait(lw_uint64_t *lock)
+{
+    lw_waiter_t *waiter = lw_waiter_get();
+    LW_UNUSED_PARAMETER(lock);
+    lw_waiter_wait(waiter);
 }
 
 /**
