@@ -41,7 +41,7 @@ static lw_bool_t internal_alloc = FALSE;
  * ensure the region is large enough for the number of lists desired.
  */
 void
-lw_bitlock_init(lw_uint32_t num_wait_lists, void *wait_list_memory)
+lw_bitlock_module_init(lw_uint32_t num_wait_lists, void *wait_list_memory)
 {
     lw_uint32_t i;
     if (num_wait_lists != 0) {
@@ -58,7 +58,7 @@ lw_bitlock_init(lw_uint32_t num_wait_lists, void *wait_list_memory)
 }
 
 void
-lw_bitlock_deinit(void)
+lw_bitlock_module_deinit(void)
 {
     lw_uint32_t i;
     for (i = 0; i < wait_lists_count; i++) {
@@ -116,6 +116,38 @@ lw_bitlock32_clear_wait_mask(lw_uint32_t *lock,
         /* Nothing more. */
         lw_assert(old == (lock_mask | wait_mask));
     } while (!lw_uint32_swap_with_mask(lock, payload_mask, &old, new));
+}
+
+/**
+ * Init a bitlock. Clears the lock and wait bit.
+ *
+ * @param lock (i/o) the 32-bit word to init as a lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ */
+void
+lw_bitlock32_init(lw_uint32_t *lock,
+                  LW_IN lw_uint32_t lock_mask,
+                  LW_IN lw_uint32_t wait_mask)
+{
+    lw_uint32_t mask = lock_mask | wait_mask;
+    *lock = *lock ^ mask;
+}
+
+/**
+ * Destroy a bitlock. Verify that the lock and wait bit are clear.
+ *
+ * @param lock (i/o) the 32-bit word used as the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ */
+void
+lw_bitlock32_destroy(lw_uint32_t *lock,
+                     LW_IN lw_uint32_t lock_mask,
+                     LW_IN lw_uint32_t wait_mask)
+{
+    lw_uint32_t mask = lock_mask | wait_mask;
+    lw_verify((*lock & mask) == 0);
 }
 
 /**
@@ -405,6 +437,38 @@ lw_bitlock64_clear_wait_mask(lw_uint64_t *lock,
         /* Nothing more. */
         lw_assert(old == (lock_mask | wait_mask));
     } while (!lw_uint64_swap_with_mask(lock, payload_mask, &old, new));
+}
+
+/**
+ * Init a bitlock. Clears the lock and wait bit.
+ *
+ * @param lock (i/o) the 64-bit word to init as a lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ */
+void
+lw_bitlock64_init(lw_uint64_t *lock,
+                  LW_IN lw_uint64_t lock_mask,
+                  LW_IN lw_uint64_t wait_mask)
+{
+    lw_uint64_t mask = lock_mask | wait_mask;
+    *lock = *lock ^ mask;
+}
+
+/**
+ * Destroy a bitlock. Verify that the lock and wait bit are clear.
+ *
+ * @param lock (i/o) the 64-bit word used as the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ */
+void
+lw_bitlock64_destroy(lw_uint64_t *lock,
+                     LW_IN lw_uint64_t lock_mask,
+                     LW_IN lw_uint64_t wait_mask)
+{
+    lw_uint64_t mask = lock_mask | wait_mask;
+    lw_verify((*lock & mask) == 0);
 }
 
 /**
