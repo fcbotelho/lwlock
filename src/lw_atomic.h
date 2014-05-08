@@ -854,7 +854,7 @@ lw_atomic64_sub_with_ret(lw_atomic64_t *atomic, lw_uint64_t i)
  * Atomic cmpxchg for a sub-part of a 64-bit value.
  *
  * @param var (i) the input parameter specifying a pointer to the var being changed.
- * @param mask (i) bits that are 1 in the mask remain untouched in the var.
+ * @param retain_mask (i) bits that are 1 in the mask remain untouched in the var.
  * @param old (i) pointer to expected old value of the variable. Updated to current value.
  * @param new (i) value to be assigned to the variable excluding bit covered by mask.
  *
@@ -866,23 +866,25 @@ lw_atomic64_sub_with_ret(lw_atomic64_t *atomic, lw_uint64_t i)
  */
 static inline lw_bool_t ALWAYS_INLINED
 lw_uint64_swap_with_mask(LW_INOUT lw_uint64_t volatile *var,
-                         LW_IN lw_uint64_t mask,
+                         LW_IN lw_uint64_t retain_mask,
                          LW_INOUT lw_uint64_t volatile *old,
                          LW_IN lw_uint64_t new)
 {
     lw_uint64_t curval, newval;
-    lw_bool_t swapped;
+    lw_uint64_t replace_mask = ~retain_mask;
     lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
 
     curval = *var;
-    curval = (curval & mask) | (*old & ~mask);
-    newval = (curval & mask) | (new & ~mask);
-    swapped = lw_uint64_swap(var, &curval, newval);
-    if (!swapped) {
-        /* Need to update old. */
-        *old = (curval & ~mask) | (*old & mask);
-        return FALSE;
-    }
+    do {
+        if ((curval & replace_mask) != (*old & replace_mask)) {
+            /* Mismatch in value. */
+            *old = curval & replace_mask;
+            return FALSE;
+        }
+        curval = (curval & retain_mask) | (*old & replace_mask);
+        newval = (curval & retain_mask) | (new & replace_mask);
+    } while (!lw_uint64_swap(var, &curval, newval));
+
     return TRUE;
 }
 
@@ -890,7 +892,7 @@ lw_uint64_swap_with_mask(LW_INOUT lw_uint64_t volatile *var,
  * Atomic cmpxchg for a sub-part of a 32-bit value.
  *
  * @param var (i) the input parameter specifying a pointer to the var being changed.
- * @param mask (i) bits that are 1 in the mask remain untouched in the var.
+ * @param retain_mask (i) bits that are 1 in the mask remain untouched in the var.
  * @param old (i) pointer to expected old value of the variable. Updated to current value.
  * @param new (i) value to be assigned to the variable excluding bit covered by mask.
  *
@@ -902,23 +904,25 @@ lw_uint64_swap_with_mask(LW_INOUT lw_uint64_t volatile *var,
  */
 static inline lw_bool_t ALWAYS_INLINED
 lw_uint32_swap_with_mask(LW_INOUT lw_uint32_t volatile *var,
-                         LW_IN lw_uint32_t mask,
+                         LW_IN lw_uint32_t retain_mask,
                          LW_INOUT lw_uint32_t volatile *old,
                          LW_IN lw_uint32_t new)
 {
     lw_uint32_t curval, newval;
-    lw_bool_t swapped;
+    lw_uint32_t replace_mask = ~retain_mask;
     lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
 
     curval = *var;
-    curval = (curval & mask) | (*old & ~mask);
-    newval = (curval & mask) | (new & ~mask);
-    swapped = lw_uint32_swap(var, &curval, newval);
-    if (!swapped) {
-        /* Need to update old. */
-        *old = (curval & ~mask) | (*old & mask);
-        return FALSE;
-    }
+    do {
+        if ((curval & replace_mask) != (*old & replace_mask)) {
+            /* Mismatch in value. */
+            *old = curval & replace_mask;
+            return FALSE;
+        }
+        curval = (curval & retain_mask) | (*old & replace_mask);
+        newval = (curval & retain_mask) | (new & replace_mask);
+    } while (!lw_uint32_swap(var, &curval, newval));
+
     return TRUE;
 }
 

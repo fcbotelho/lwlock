@@ -182,7 +182,6 @@ lw_bitlock32_lock(lw_uint32_t *lock,
     wait_list = &wait_lists[wait_list_idx];
     waiter = lw_waiter_get();
     lw_dl_lock_writer(wait_list);
-    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
     got_lock = lw_bitlock32_set_lock_bit(lock, lock_mask, wait_mask, TRUE);
     if (got_lock) {
         lw_dl_unlock_writer(wait_list);
@@ -191,6 +190,7 @@ lw_bitlock32_lock(lw_uint32_t *lock,
     lw_assert(waiter->event.wait_src == NULL);
     waiter->event.wait_src = lock;
     waiter->event.tag = (lock_mask | wait_mask);
+    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
     lw_dl_unlock_writer(wait_list);
     if (sync) {
         lw_waiter_wait(waiter);
@@ -198,6 +198,86 @@ lw_bitlock32_lock(lw_uint32_t *lock,
         waiter->event.wait_src = NULL;
     }
     return;
+}
+
+/**
+ * Acquire a bitlock if the payload matches. The paylaod check can only be done up to
+ * the point of setting the wait bit. It is the users responsibility to ensure that the
+ * payload will not change if either the lock or wait is set.
+ *
+ * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ */
+lw_bool_t
+lw_bitlock32_lock_if_payload(lw_uint32_t *lock,
+                             LW_IN lw_uint32_t lock_mask,
+                             LW_IN lw_uint32_t wait_mask,
+                             lw_uint32_t *payload,
+                             LW_IN lw_bool_t sync)
+{
+    lw_uint32_t wait_list_idx;
+    lw_dlist_t *wait_list;
+    lw_waiter_t *waiter;
+    lw_uint32_t old, new, payload_mask;
+    lw_bool_t got_lock;
+    payload_mask = ~(lock_mask | wait_mask);
+    *payload = *payload & payload_mask;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
+
+    old = *payload;
+    new = *payload | lock_mask;
+    got_lock = lw_uint32_swap(lock, &old, new);
+    if (got_lock) {
+        /* All done. */
+        return TRUE;
+    }
+    if ((old & payload_mask) != *payload) {
+        /* Different payload. */
+        *payload = (old & payload_mask);
+        return FALSE;
+    }
+
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+    waiter = lw_waiter_get();
+    lw_dl_lock_writer(wait_list);
+    old = *payload;
+    do {
+        if ((old & payload_mask) != *payload) {
+            /* Different payload. */
+            lw_dl_unlock_writer(wait_list);
+            *payload = (old & payload_mask);
+            return FALSE;
+        }
+        if ((old & lock_mask) == 0) {
+            lw_assert((old & wait_mask) == 0);
+            new = old | lock_mask;
+            got_lock = TRUE;
+        } else {
+            new = old | wait_mask;
+            got_lock = FALSE;
+        }
+    } while (!lw_uint32_swap(lock, &old, new));
+    if (got_lock) {
+        lw_dl_unlock_writer(wait_list);
+        return TRUE;
+    }
+    lw_assert(waiter->event.wait_src == NULL);
+    waiter->event.wait_src = lock;
+    waiter->event.tag = (lock_mask | wait_mask);
+    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
+    lw_dl_unlock_writer(wait_list);
+    if (sync) {
+        lw_waiter_wait(waiter);
+        lw_assert(*lock & lock_mask);
+        waiter->event.wait_src = NULL;
+    }
+    return TRUE;
 }
 
 void
@@ -313,9 +393,12 @@ lw_bitlock32_trylock_if_payload(lw_uint32_t *lock,
  * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
  * @param lock_mask (i) the bit that represents lock being held.
  * @param wait_mask (i) the bit that is set when waiting.
+ * @returns TRUE if the lock was handed off to a waiter. FALSE otherwise.
  */
-void
-lw_bitlock32_unlock(lw_uint32_t *lock, lw_uint32_t lock_mask, lw_uint32_t wait_mask)
+lw_bool_t
+lw_bitlock32_unlock_ret_wait_status(lw_uint32_t *lock,
+                                    LW_IN lw_uint32_t lock_mask,
+                                    LW_IN lw_uint32_t wait_mask)
 {
     lw_uint32_t wait_list_idx;
     lw_dlist_t *wait_list;
@@ -330,7 +413,7 @@ lw_bitlock32_unlock(lw_uint32_t *lock, lw_uint32_t lock_mask, lw_uint32_t wait_m
 
     if (lw_bitlock32_drop_lock_if_no_waiters(lock, lock_mask, wait_mask)) {
         /* All done. */
-        return;
+        return FALSE;
     }
 
     wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
@@ -361,7 +444,7 @@ lw_bitlock32_unlock(lw_uint32_t *lock, lw_uint32_t lock_mask, lw_uint32_t wait_m
     lw_dl_unlock_writer(wait_list);
     lw_waiter_wakeup(to_wake_up, lock);
 
-    return;
+    return TRUE;
 }
 
 /**
@@ -503,7 +586,6 @@ lw_bitlock64_lock(lw_uint64_t *lock,
     wait_list = &wait_lists[wait_list_idx];
     waiter = lw_waiter_get();
     lw_dl_lock_writer(wait_list);
-    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
     got_lock = lw_bitlock64_set_lock_bit(lock, lock_mask, wait_mask, TRUE);
     if (got_lock) {
         lw_dl_unlock_writer(wait_list);
@@ -512,6 +594,7 @@ lw_bitlock64_lock(lw_uint64_t *lock,
     lw_assert(waiter->event.wait_src == NULL);
     waiter->event.wait_src = lock;
     waiter->event.tag = (lock_mask | wait_mask);
+    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
     lw_dl_unlock_writer(wait_list);
     if (sync) {
         lw_waiter_wait(waiter);
@@ -519,6 +602,86 @@ lw_bitlock64_lock(lw_uint64_t *lock,
         waiter->event.wait_src = NULL;
     }
     return;
+}
+
+/**
+ * Acquire a bitlock if the payload matches. The paylaod check can only be done up to
+ * the point of setting the wait bit. It is the users responsibility to ensure that the
+ * payload will not change if either the lock or wait is set.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ */
+lw_bool_t
+lw_bitlock64_lock_if_payload(lw_uint64_t *lock,
+                             LW_IN lw_uint64_t lock_mask,
+                             LW_IN lw_uint64_t wait_mask,
+                             lw_uint64_t *payload,
+                             LW_IN lw_bool_t sync)
+{
+    lw_uint64_t wait_list_idx;
+    lw_dlist_t *wait_list;
+    lw_waiter_t *waiter;
+    lw_uint64_t old, new, payload_mask;
+    lw_bool_t got_lock;
+    payload_mask = ~(lock_mask | wait_mask);
+    *payload = *payload & payload_mask;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
+
+    old = *payload;
+    new = *payload | lock_mask;
+    got_lock = lw_uint64_swap(lock, &old, new);
+    if (got_lock) {
+        /* All done. */
+        return TRUE;
+    }
+    if ((old & payload_mask) != *payload) {
+        /* Different payload. */
+        *payload = old & payload_mask;
+        return FALSE;
+    }
+
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+    waiter = lw_waiter_get();
+    lw_dl_lock_writer(wait_list);
+    old = *payload;
+    do {
+        if ((old & payload_mask) != *payload) {
+            /* Different payload. */
+            lw_dl_unlock_writer(wait_list);
+            *payload = old & payload_mask;
+            return FALSE;
+        }
+        if ((old & lock_mask) == 0) {
+            lw_assert((old & wait_mask) == 0);
+            new = old | lock_mask;
+            got_lock = TRUE;
+        } else {
+            new = old | wait_mask;
+            got_lock = FALSE;
+        }
+    } while (!lw_uint64_swap(lock, &old, new));
+    if (got_lock) {
+        lw_dl_unlock_writer(wait_list);
+        return TRUE;
+    }
+    lw_assert(waiter->event.wait_src == NULL);
+    waiter->event.wait_src = lock;
+    waiter->event.tag = (lock_mask | wait_mask);
+    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
+    lw_dl_unlock_writer(wait_list);
+    if (sync) {
+        lw_waiter_wait(waiter);
+        lw_assert(*lock & lock_mask);
+        waiter->event.wait_src = NULL;
+    }
+    return TRUE;
 }
 
 void
@@ -634,9 +797,12 @@ lw_bitlock64_trylock_if_payload(lw_uint64_t *lock,
  * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
  * @param lock_mask (i) the bit that represents lock being held.
  * @param wait_mask (i) the bit that is set when waiting.
+ * @returns TRUE if the lock was handed off to a waiter. FALSE otherwise.
  */
-void
-lw_bitlock64_unlock(lw_uint64_t *lock, lw_uint64_t lock_mask, lw_uint64_t wait_mask)
+lw_bool_t
+lw_bitlock64_unlock_ret_wait_status(lw_uint64_t *lock,
+                                    LW_IN lw_uint64_t lock_mask,
+                                    LW_IN lw_uint64_t wait_mask)
 {
     lw_uint64_t wait_list_idx;
     lw_dlist_t *wait_list;
@@ -651,7 +817,7 @@ lw_bitlock64_unlock(lw_uint64_t *lock, lw_uint64_t lock_mask, lw_uint64_t wait_m
 
     if (lw_bitlock64_drop_lock_if_no_waiters(lock, lock_mask, wait_mask)) {
         /* All done. */
-        return;
+        return FALSE;
     }
 
     wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
@@ -682,7 +848,7 @@ lw_bitlock64_unlock(lw_uint64_t *lock, lw_uint64_t lock_mask, lw_uint64_t wait_m
     lw_dl_unlock_writer(wait_list);
     lw_waiter_wakeup(to_wake_up, lock);
 
-    return;
+    return TRUE;
 }
 
 /**

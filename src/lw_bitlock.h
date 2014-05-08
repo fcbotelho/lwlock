@@ -43,6 +43,13 @@ lw_bitlock32_destroy(lw_uint32_t *lock,
                      LW_IN lw_uint32_t lock_mask,
                      LW_IN lw_uint32_t wait_mask);
 
+lw_bool_t
+lw_bitlock32_lock_if_payload(lw_uint32_t *lock,
+                             LW_IN lw_uint32_t lock_mask,
+                             LW_IN lw_uint32_t wait_mask,
+                             lw_uint32_t *payload,
+                             LW_IN lw_bool_t sync);
+
 void
 lw_bitlock32_lock(lw_uint32_t *lock,
                   LW_IN lw_uint32_t lock_mask,
@@ -68,8 +75,16 @@ lw_bitlock32_trylock_if_payload(lw_uint32_t *lock,
                                 LW_IN lw_uint32_t payload,
                                 LW_OUT lw_uint32_t *curr_payload);
 
-void
-lw_bitlock32_unlock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_mask, LW_IN lw_uint32_t wait_mask);
+lw_bool_t
+lw_bitlock32_unlock_ret_wait_status(lw_uint32_t *lock,
+                                    LW_IN lw_uint32_t lock_mask,
+                                    LW_IN lw_uint32_t wait_mask);
+
+static inline void ALWAYS_INLINED
+lw_bitlock32_unlock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_mask, LW_IN lw_uint32_t wait_mask)
+{
+    LW_IGNORE_RETURN_VALUE(lw_bitlock32_unlock_ret_wait_status(lock, lock_mask, wait_mask));
+}
 
 lw_bool_t
 lw_bitlock32_swap_payload(lw_uint32_t *lock,
@@ -102,6 +117,13 @@ lw_bitlock64_lock(lw_uint64_t *lock,
 
 void lw_bitlock64_lock_complete_wait(lw_uint64_t *lock);
 
+lw_bool_t
+lw_bitlock64_lock_if_payload(lw_uint64_t *lock,
+                             LW_IN lw_uint64_t lock_mask,
+                             LW_IN lw_uint64_t wait_mask,
+                             lw_uint64_t *payload,
+                             LW_IN lw_bool_t sync);
+
 lw_int32_t
 lw_bitlock64_trylock(lw_uint64_t *lock, LW_IN lw_uint64_t lock_mask, LW_IN lw_uint64_t wait_mask);
 
@@ -112,9 +134,23 @@ lw_bitlock64_trylock_set_payload(lw_uint64_t *lock,
                                  LW_IN lw_uint64_t new_payload,
                                  LW_OUT lw_uint64_t *curr_payload);
 
+lw_int32_t
+lw_bitlock64_trylock_if_payload(lw_uint64_t *lock,
+                                LW_IN lw_uint64_t lock_mask,
+                                LW_IN lw_uint64_t wait_mask,
+                                LW_IN lw_uint64_t payload,
+                                LW_OUT lw_uint64_t *curr_payload);
 
-void
-lw_bitlock64_unlock(lw_uint64_t *lock, LW_IN lw_uint64_t lock_mask, LW_IN lw_uint64_t wait_mask);
+lw_bool_t
+lw_bitlock64_unlock_ret_wait_status(lw_uint64_t *lock,
+                                    LW_IN lw_uint64_t lock_mask,
+                                    LW_IN lw_uint64_t wait_mask);
+
+static inline void ALWAYS_INLINED
+lw_bitlock64_unlock(lw_uint64_t *lock, LW_IN lw_uint64_t lock_mask, LW_IN lw_uint64_t wait_mask)
+{
+    LW_IGNORE_RETURN_VALUE(lw_bitlock64_unlock_ret_wait_status(lock, lock_mask, wait_mask));
+}
 
 lw_bool_t
 lw_bitlock64_swap_payload(lw_uint64_t *lock,
@@ -122,12 +158,5 @@ lw_bitlock64_swap_payload(lw_uint64_t *lock,
                           lw_uint64_t wait_mask,
                           lw_uint64_t *current_payload,
                           lw_uint64_t new_payload);
-
-lw_int32_t
-lw_bitlock64_trylock_if_payload(lw_uint64_t *lock,
-                                LW_IN lw_uint64_t lock_mask,
-                                LW_IN lw_uint64_t wait_mask,
-                                LW_IN lw_uint64_t payload,
-                                LW_OUT lw_uint64_t *curr_payload);
 
 #endif /* __LW_BITLOCK_H__ */

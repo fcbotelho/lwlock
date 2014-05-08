@@ -98,8 +98,8 @@ typedef lw_uint16_t lw_waiter_id_t;
  *
  * Works for both 32 and 64 bit pointers.
  */
-#define LW_PTR_2_NUM(__ptr, __type) ((__type)((uintptr_t)(__ptr)))
-#define LW_NUM_2_PTR(__num, __type) ((__type *)((uintptr_t)(__num)))
+#define LW_PTR_2_NUM(__ptr, __type) ((typeof(__type))((uintptr_t)(__ptr)))
+#define LW_NUM_2_PTR(__num, __type) ((typeof(__type) *)((uintptr_t)(__num)))
 
 #define LW_OFFSET_OF(_type, _field)         \
     LW_PTR_2_NUM((&(((__typeof__(_type) *)0)->_field)), lw_uint64_t)
