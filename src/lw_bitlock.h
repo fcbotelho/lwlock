@@ -27,6 +27,12 @@ void lw_bitlock_init(lw_uint32_t num_wait_lists, void *wait_list_memory);
 
 void lw_bitlock_deinit(void);
 
+typedef struct {
+    lw_uint32_t *lock;
+    lw_uint32_t lock_mask;
+    lw_uint32_t wait_mask;
+} lw_bitlock32_spec_t;
+
 void
 lw_bitlock32_lock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_mask, LW_IN lw_uint32_t wait_mask);
 
@@ -56,6 +62,12 @@ lw_bitlock32_swap_payload(lw_uint32_t *lock,
                           lw_uint32_t wait_mask,
                           lw_uint32_t *current_payload,
                           lw_uint32_t new_payload);
+
+typedef struct {
+    lw_uint64_t *lock;
+    lw_uint64_t lock_mask;
+    lw_uint64_t wait_mask;
+} lw_bitlock64_spec_t;
 
 void
 lw_bitlock64_lock(lw_uint64_t *lock, LW_IN lw_uint64_t lock_mask, LW_IN lw_uint64_t wait_mask);

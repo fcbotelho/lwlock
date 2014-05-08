@@ -14,6 +14,7 @@
 #include "lw_mutex.h"
 #include "lw_mutex2b.h"
 #include "lw_rwlock.h"
+#include "lw_bitlock.h"
 #include <pthread.h>
 
 /* This file implements a common set of APIs for lw lock primitives.
@@ -29,6 +30,8 @@ typedef enum {
     LW_LOCK_TYPE_LWMUTEX2B,
     LW_LOCK_TYPE_LWRWLOCK_RD,
     LW_LOCK_TYPE_LWRWLOCK_WR,
+    LW_LOCK_TYPE_BITLOCK32,
+    LW_LOCK_TYPE_BITLOCK64,
     LW_LOCK_TYPE_NONE /* a no-op lock that simulates presence of race */
 } lw_lock_type_t;
 
@@ -45,6 +48,10 @@ lw_lock_common_lock_type_description(lw_lock_type_t type) {
             return "LW_LOCK_TYPE_LWRWLOCK_RD";
         case LW_LOCK_TYPE_LWRWLOCK_WR:
             return "LW_LOCK_TYPE_LWRWLOCK_WR";
+        case LW_LOCK_TYPE_BITLOCK32:
+            return "LW_LOCK_TYPE_BITLOCK32";
+        case LW_LOCK_TYPE_BITLOCK64:
+            return "LW_LOCK_TYPE_BITLOCK64";
         case LW_LOCK_TYPE_NONE:
             return "LW_LOCK_TYPE_NONE";
         default:
@@ -74,6 +81,16 @@ lw_lock_common_acquire_lock(LW_INOUT void *lock,
         case LW_LOCK_TYPE_LWRWLOCK_WR:
             lw_verify(lw_rwlock_lock(lock, LW_RWLOCK_EXCLUSIVE | LW_RWLOCK_WAIT, waiter) == 0);
             break;
+        case LW_LOCK_TYPE_BITLOCK32: {
+            lw_bitlock32_spec_t *spec = (lw_bitlock32_spec_t *)lock;
+            lw_bitlock32_lock(spec->lock, spec->lock_mask, spec->wait_mask);
+            break;
+        }
+        case LW_LOCK_TYPE_BITLOCK64: {
+            lw_bitlock64_spec_t *spec = (lw_bitlock64_spec_t *)lock;
+            lw_bitlock64_lock(spec->lock, spec->lock_mask, spec->wait_mask);
+            break;
+        }
         case LW_LOCK_TYPE_NONE:
             /* no op */
             break;
@@ -103,6 +120,16 @@ lw_lock_common_drop_lock(LW_INOUT void *lock,
         case LW_LOCK_TYPE_LWRWLOCK_WR:
             lw_rwlock_unlock(lock, TRUE);
             break;
+        case LW_LOCK_TYPE_BITLOCK32: {
+            lw_bitlock32_spec_t *spec = (lw_bitlock32_spec_t *)lock;
+            lw_bitlock32_unlock(spec->lock, spec->lock_mask, spec->wait_mask);
+            break;
+        }
+        case LW_LOCK_TYPE_BITLOCK64: {
+            lw_bitlock64_spec_t *spec = (lw_bitlock64_spec_t *)lock;
+            lw_bitlock64_unlock(spec->lock, spec->lock_mask, spec->wait_mask);
+            break;
+        }
         case LW_LOCK_TYPE_NONE:
             /* no op */
             break;
