@@ -310,63 +310,23 @@ lw_bitlock32_trylock(lw_uint32_t *lock, lw_uint32_t lock_mask, lw_uint32_t wait_
 }
 
 /**
- * Try to acquire a bitlock and set the payload to the provided value if the lock is acquired.
- * If the curr_payload pointer is !NULL, the current value is returned regardless of whether
- * the lock is acquired or not.
- *
- * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
- * @param lock_mask (i) the bit that represents lock being held.
- * @param wait_mask (i) the bit that is set when waiting.
- * @param new_payload (i) the value to set payload to.
- * @param curr_payload (o) if not NULL, the current value is returned here.
- * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
- */
-lw_int32_t
-lw_bitlock32_trylock_set_payload(lw_uint32_t *lock,
-                                 LW_IN lw_uint32_t lock_mask,
-                                 LW_IN lw_uint32_t wait_mask,
-                                 LW_IN lw_uint32_t new_payload,
-                                 LW_OUT lw_uint32_t *curr_payload)
-{
-    lw_uint32_t old, new;
-    lw_bool_t swapped = FALSE;
-
-    lw_assert(lock_mask != wait_mask);
-    lw_assert(lock_mask != 0 && wait_mask != 0);
-    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
-    lw_assert((lock_mask & new_payload) == 0);
-    lw_assert((wait_mask & new_payload) == 0);
-
-    new = new_payload | lock_mask;
-    old = *lock;
-    if ((old & lock_mask) == 0) {
-        lw_assert((old & wait_mask) == 0);
-        swapped = lw_uint32_swap(lock, &old, new);
-    }
-    if (curr_payload != NULL) {
-        *curr_payload = old;
-    }
-    return swapped ? 0 : EBUSY;
-}
-
-/**
  * Try to acquire a bitlock only if the payload matches the current value.
- * If the curr_payload pointer is !NULL, the current value is returned regardless of whether
- * the lock is acquired or not.
+ * The curr_payload is updated on mismatch regardless of whether the lock failed due to
+ * it or due to it being already locked.
  *
  * @param lock (i/o) the 32-bit word that holds the bits that form the lock.
  * @param lock_mask (i) the bit that represents lock being held.
  * @param wait_mask (i) the bit that is set when waiting.
- * @param payload (i) the value to set payload to.
- * @param curr_payload (o) if not NULL, the current value is returned here.
+ * @param curr_payload (i/o) the expected payload value. Updated to actual value.
+ * @param new_payload (i) the new payload value to set.
  * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
  */
 lw_int32_t
-lw_bitlock32_trylock_if_payload(lw_uint32_t *lock,
-                                LW_IN lw_uint32_t lock_mask,
-                                LW_IN lw_uint32_t wait_mask,
-                                LW_IN lw_uint32_t payload,
-                                LW_OUT lw_uint32_t *curr_payload)
+lw_bitlock32_trylock_cmpxchng_payloadd(lw_uint32_t *lock,
+                                       LW_IN lw_uint32_t lock_mask,
+                                       LW_IN lw_uint32_t wait_mask,
+                                       LW_INOUT lw_uint32_t *curr_payload,
+                                       LW_IN lw_uint32_t new_payload)
 {
     lw_uint32_t new, old;
     lw_bool_t swapped = FALSE;
@@ -374,15 +334,15 @@ lw_bitlock32_trylock_if_payload(lw_uint32_t *lock,
     lw_assert(lock_mask != wait_mask);
     lw_assert(lock_mask != 0 && wait_mask != 0);
     lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
-    lw_assert((lock_mask & payload) == 0);
-    lw_assert((wait_mask & payload) == 0);
+    lw_assert((lock_mask & *curr_payload) == 0);
+    lw_assert((wait_mask & *curr_payload) == 0);
+    lw_assert((lock_mask & new_payload) == 0);
+    lw_assert((wait_mask & new_payload) == 0);
 
-    old = payload;
-    new = payload | lock_mask;
+    old = *curr_payload;
+    new = new_payload | lock_mask;
     swapped = lw_uint32_swap(lock, &old, new);
-    if (curr_payload != NULL) {
-        *curr_payload = old;
-    }
+    *curr_payload = old & ~(lock_mask | wait_mask);
     return swapped ? 0 : EBUSY;
 }
 
@@ -605,6 +565,174 @@ lw_bitlock64_lock(lw_uint64_t *lock,
 }
 
 /**
+ * Wait on the CV bit of the bitlock.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set by waiters of the lock.
+ * @param cv_mask (i) the bit that is set when doing cond wait.
+ */
+void
+lw_bitlock32_cv_wait(lw_uint32_t *lock,
+                     LW_IN lw_uint32_t lock_mask,
+                     LW_IN lw_uint32_t wait_mask,
+                     LW_IN lw_uint32_t cv_mask)
+{
+    lw_uint64_t wait_list_idx;
+    lw_dlist_t *wait_list;
+    lw_waiter_t *waiter;
+    lw_uint32_t old;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(cv_mask != wait_mask);
+    lw_assert(lock_mask != cv_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0 && cv_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask) && LW_IS_POW2(cv_mask));
+    lw_assert((*lock & lock_mask));
+
+    old = 0;
+    LW_IGNORE_RETURN_VALUE(lw_uint32_swap_with_mask(lock, ~cv_mask, &old, cv_mask));
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+    waiter = lw_waiter_get();
+    lw_dl_lock_writer(wait_list);
+    lw_assert(waiter->event.wait_src == NULL);
+    waiter->event.wait_src = lock;
+    waiter->event.tag = (lock_mask | cv_mask);
+    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
+    lw_dl_unlock_writer(wait_list);
+    /* Drop the lock. */
+    lw_bitlock32_unlock(lock, lock_mask, wait_mask);
+    /* Wait. */
+    lw_waiter_wait(waiter);
+    lw_assert(*lock & lock_mask);
+    waiter->event.wait_src = NULL;
+    return;
+}
+
+/**
+ * Signal the bit cv.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ * @param cv_mask (i) the bit that is set when doing cond wait.
+ */
+void
+lw_bitlock32_cv_signal(lw_uint32_t *lock,
+                       LW_IN lw_uint32_t lock_mask,
+                       LW_IN lw_uint32_t wait_mask,
+                       LW_IN lw_uint32_t cv_mask)
+{
+    lw_uint64_t wait_list_idx;
+    lw_dlist_t *wait_list;
+    lw_waiter_t *to_move = NULL;
+    lw_delem_t *elem;
+    lw_uint64_t cv_tag = lock_mask | cv_mask;
+    lw_uint64_t wait_tag = lock_mask | wait_mask;
+    lw_bool_t multiple_waiters = FALSE;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(cv_mask != wait_mask);
+    lw_assert(lock_mask != cv_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0 && cv_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask) && LW_IS_POW2(cv_mask));
+    lw_assert((*lock & lock_mask));
+
+    if ((*lock & cv_mask) == 0) {
+        /* No one in a cv wait. */
+        return;
+    }
+
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+
+    lw_dl_lock_writer(wait_list);
+    elem = wait_list->head;
+    while (elem != NULL) {
+        lw_waiter_t *waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.iface.link);
+        if (waiter->event.wait_src == lock && waiter->event.tag == cv_tag) {
+            /* Found a waiter. */
+            if (to_move == NULL) {
+                to_move = waiter;
+                waiter->event.tag = wait_tag;
+            } else {
+                multiple_waiters = TRUE;
+                break;
+            }
+        }
+        elem = lw_dl_next(wait_list, elem);
+    }
+    lw_assert(to_move != NULL);
+    lw_dl_unlock_writer(wait_list);
+    if (!multiple_waiters)  {
+        /* Clear wait bit. Lock is held, so no race can take place. */
+        lw_uint32_t old = cv_mask;
+        LW_IGNORE_RETURN_VALUE(lw_uint32_swap_with_mask(lock, ~cv_mask, &old, 0));
+    }
+    return;
+}
+
+/**
+ * Broadcast the bit cv.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ * @param cv_mask (i) the bit that is set when doing cond wait.
+ */
+void
+lw_bitlock32_cv_broadcast(lw_uint32_t *lock,
+                          LW_IN lw_uint32_t lock_mask,
+                          LW_IN lw_uint32_t wait_mask,
+                          LW_IN lw_uint32_t cv_mask)
+{
+    lw_uint64_t wait_list_idx;
+    lw_dlist_t *wait_list;
+    lw_delem_t *elem;
+    lw_uint64_t cv_tag = lock_mask | cv_mask;
+    lw_uint64_t wait_tag = lock_mask | wait_mask;
+    lw_bool_t atleast_one = FALSE;
+    lw_uint32_t old = cv_mask;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(cv_mask != wait_mask);
+    lw_assert(lock_mask != cv_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0 && cv_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask) && LW_IS_POW2(cv_mask));
+    lw_assert((*lock & lock_mask));
+
+    if ((*lock & cv_mask) == 0) {
+        /* No one in a cv wait. */
+        return;
+    }
+
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+
+    lw_dl_lock_writer(wait_list);
+    elem = wait_list->head;
+    while (elem != NULL) {
+        lw_waiter_t *waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.iface.link);
+        if (waiter->event.wait_src == lock && waiter->event.tag == cv_tag) {
+            /* Found a waiter. */
+            atleast_one = TRUE;
+            waiter->event.tag = wait_tag;
+        }
+        elem = lw_dl_next(wait_list, elem);
+    }
+    lw_assert(atleast_one);
+    LW_UNUSED_PARAMETER(atleast_one);
+    lw_dl_unlock_writer(wait_list);
+    /* Clear wait bit. Lock is held, so no race can take place. */
+    LW_IGNORE_RETURN_VALUE(lw_uint32_swap_with_mask(lock, ~cv_mask, &old, 0));
+    return;
+}
+
+/**
  * Acquire a bitlock if the payload matches. The paylaod check can only be done up to
  * the point of setting the wait bit. It is the users responsibility to ensure that the
  * payload will not change if either the lock or wait is set.
@@ -714,63 +842,23 @@ lw_bitlock64_trylock(lw_uint64_t *lock, lw_uint64_t lock_mask, lw_uint64_t wait_
 }
 
 /**
- * Try to acquire a bitlock and set the payload to the provided value if the lock is acquired.
- * If the curr_payload pointer is !NULL, the current value is returned regardless of whether
- * the lock is acquired or not.
- *
- * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
- * @param lock_mask (i) the bit that represents lock being held.
- * @param wait_mask (i) the bit that is set when waiting.
- * @param new_payload (i) the value to set payload to.
- * @param curr_payload (o) if not NULL, the current value is returned here.
- * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
- */
-lw_int32_t
-lw_bitlock64_trylock_set_payload(lw_uint64_t *lock,
-                                 LW_IN lw_uint64_t lock_mask,
-                                 LW_IN lw_uint64_t wait_mask,
-                                 LW_IN lw_uint64_t new_payload,
-                                 LW_OUT lw_uint64_t *curr_payload)
-{
-    lw_uint64_t old, new;
-    lw_bool_t swapped = FALSE;
-
-    lw_assert(lock_mask != wait_mask);
-    lw_assert(lock_mask != 0 && wait_mask != 0);
-    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
-    lw_assert((lock_mask & new_payload) == 0);
-    lw_assert((wait_mask & new_payload) == 0);
-
-    new = new_payload | lock_mask;
-    old = *lock;
-    if ((old & lock_mask) == 0) {
-        lw_assert((old & wait_mask) == 0);
-        swapped = lw_uint64_swap(lock, &old, new);
-    }
-    if (curr_payload != NULL) {
-        *curr_payload = old;
-    }
-    return swapped ? 0 : EBUSY;
-}
-
-/**
  * Try to acquire a bitlock only if the payload matches the current value.
- * If the curr_payload pointer is !NULL, the current value is returned regardless of whether
- * the lock is acquired or not.
+ * The curr_payload is updated on mismatch regardless of whether the lock failed due to
+ * it or due to it being already locked.
  *
  * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
  * @param lock_mask (i) the bit that represents lock being held.
  * @param wait_mask (i) the bit that is set when waiting.
- * @param payload (i) the value to set payload to.
- * @param curr_payload (o) if not NULL, the current value is returned here.
+ * @param curr_payload (i/o) the expected payload value. Updated to actual value.
+ * @param new_payload (i) the new payload value to set.
  * @results 0 if lock is acquired, EBUSY if it cannot due to contention.
  */
 lw_int32_t
-lw_bitlock64_trylock_if_payload(lw_uint64_t *lock,
-                                LW_IN lw_uint64_t lock_mask,
-                                LW_IN lw_uint64_t wait_mask,
-                                LW_IN lw_uint64_t payload,
-                                LW_OUT lw_uint64_t *curr_payload)
+lw_bitlock64_trylock_cmpxchng_payloadd(lw_uint64_t *lock,
+                                       LW_IN lw_uint64_t lock_mask,
+                                       LW_IN lw_uint64_t wait_mask,
+                                       LW_INOUT lw_uint64_t *curr_payload,
+                                       LW_IN lw_uint64_t new_payload)
 {
     lw_uint64_t new, old;
     lw_bool_t swapped = FALSE;
@@ -778,15 +866,15 @@ lw_bitlock64_trylock_if_payload(lw_uint64_t *lock,
     lw_assert(lock_mask != wait_mask);
     lw_assert(lock_mask != 0 && wait_mask != 0);
     lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask));
-    lw_assert((lock_mask & payload) == 0);
-    lw_assert((wait_mask & payload) == 0);
+    lw_assert((lock_mask & *curr_payload) == 0);
+    lw_assert((wait_mask & *curr_payload) == 0);
+    lw_assert((lock_mask & new_payload) == 0);
+    lw_assert((wait_mask & new_payload) == 0);
 
-    old = payload;
-    new = payload | lock_mask;
+    old = *curr_payload;
+    new = new_payload | lock_mask;
     swapped = lw_uint64_swap(lock, &old, new);
-    if (curr_payload != NULL) {
-        *curr_payload = old;
-    }
+    *curr_payload = old & ~(lock_mask | wait_mask);
     return swapped ? 0 : EBUSY;
 }
 
@@ -877,3 +965,170 @@ lw_bitlock64_swap_payload(lw_uint64_t *lock,
     return lw_uint64_swap_with_mask(lock, mask, current_payload, new_payload);
 }
 
+/**
+ * Wait on the CV bit of the bitlock.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set by waiters of the lock.
+ * @param cv_mask (i) the bit that is set when doing cond wait.
+ */
+void
+lw_bitlock64_cv_wait(lw_uint64_t *lock,
+                     LW_IN lw_uint64_t lock_mask,
+                     LW_IN lw_uint64_t wait_mask,
+                     LW_IN lw_uint64_t cv_mask)
+{
+    lw_uint64_t wait_list_idx;
+    lw_dlist_t *wait_list;
+    lw_waiter_t *waiter;
+    lw_uint64_t old;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(cv_mask != wait_mask);
+    lw_assert(lock_mask != cv_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0 && cv_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask) && LW_IS_POW2(cv_mask));
+    lw_assert((*lock & lock_mask));
+
+    old = 0;
+    LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(lock, ~cv_mask, &old, cv_mask));
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+    waiter = lw_waiter_get();
+    lw_dl_lock_writer(wait_list);
+    lw_assert(waiter->event.wait_src == NULL);
+    waiter->event.wait_src = lock;
+    waiter->event.tag = (lock_mask | cv_mask);
+    lw_dl_append_at_end(wait_list, &waiter->event.iface.link);
+    lw_dl_unlock_writer(wait_list);
+    /* Drop the lock. */
+    lw_bitlock64_unlock(lock, lock_mask, wait_mask);
+    /* Wait. */
+    lw_waiter_wait(waiter);
+    lw_assert(*lock & lock_mask);
+    waiter->event.wait_src = NULL;
+    return;
+}
+
+/**
+ * Signal the bit cv.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ * @param cv_mask (i) the bit that is set when doing cond wait.
+ */
+void
+lw_bitlock64_cv_signal(lw_uint64_t *lock,
+                       LW_IN lw_uint64_t lock_mask,
+                       LW_IN lw_uint64_t wait_mask,
+                       LW_IN lw_uint64_t cv_mask)
+{
+    lw_uint64_t wait_list_idx;
+    lw_dlist_t *wait_list;
+    lw_waiter_t *to_move = NULL;
+    lw_delem_t *elem;
+    lw_uint64_t cv_tag = lock_mask | cv_mask;
+    lw_uint64_t wait_tag = lock_mask | wait_mask;
+    lw_bool_t multiple_waiters = FALSE;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(cv_mask != wait_mask);
+    lw_assert(lock_mask != cv_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0 && cv_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask) && LW_IS_POW2(cv_mask));
+    lw_assert((*lock & lock_mask));
+
+    if ((*lock & cv_mask) == 0) {
+        /* No one in a cv wait. */
+        return;
+    }
+
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+
+    lw_dl_lock_writer(wait_list);
+    elem = wait_list->head;
+    while (elem != NULL) {
+        lw_waiter_t *waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.iface.link);
+        if (waiter->event.wait_src == lock && waiter->event.tag == cv_tag) {
+            /* Found a waiter. */
+            if (to_move == NULL) {
+                to_move = waiter;
+                waiter->event.tag = wait_tag;
+            } else {
+                multiple_waiters = TRUE;
+                break;
+            }
+        }
+        elem = lw_dl_next(wait_list, elem);
+    }
+    lw_assert(to_move != NULL);
+    lw_dl_unlock_writer(wait_list);
+    if (!multiple_waiters)  {
+        /* Clear wait bit. Lock is held, so no race can take place. */
+        lw_uint64_t old = cv_mask;
+        LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(lock, ~cv_mask, &old, 0));
+    }
+    return;
+}
+
+/**
+ * Broadcast the bit cv.
+ *
+ * @param lock (i/o) the 64-bit word that holds the bits that form the lock.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ * @param cv_mask (i) the bit that is set when doing cond wait.
+ */
+void
+lw_bitlock64_cv_broadcast(lw_uint64_t *lock,
+                          LW_IN lw_uint64_t lock_mask,
+                          LW_IN lw_uint64_t wait_mask,
+                          LW_IN lw_uint64_t cv_mask)
+{
+    lw_uint64_t wait_list_idx;
+    lw_dlist_t *wait_list;
+    lw_delem_t *elem;
+    lw_uint64_t cv_tag = lock_mask | cv_mask;
+    lw_uint64_t wait_tag = lock_mask | wait_mask;
+    lw_bool_t atleast_one = FALSE;
+    lw_uint64_t old = cv_mask;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(cv_mask != wait_mask);
+    lw_assert(lock_mask != cv_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0 && cv_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask) && LW_IS_POW2(cv_mask));
+    lw_assert((*lock & lock_mask));
+
+    if ((*lock & cv_mask) == 0) {
+        /* No one in a cv wait. */
+        return;
+    }
+
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+
+    lw_dl_lock_writer(wait_list);
+    elem = wait_list->head;
+    while (elem != NULL) {
+        lw_waiter_t *waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.iface.link);
+        if (waiter->event.wait_src == lock && waiter->event.tag == cv_tag) {
+            /* Found a waiter. */
+            atleast_one = TRUE;
+            waiter->event.tag = wait_tag;
+        }
+        elem = lw_dl_next(wait_list, elem);
+    }
+    lw_assert(atleast_one);
+    LW_UNUSED_PARAMETER(atleast_one);
+    lw_dl_unlock_writer(wait_list);
+    /* Clear wait bit. Lock is held, so no race can take place. */
+    LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(lock, ~cv_mask, &old, 0));
+    return;
+}

@@ -56,24 +56,35 @@ lw_bitlock32_lock(lw_uint32_t *lock,
                   LW_IN lw_uint32_t wait_mask,
                   LW_IN lw_bool_t sync);
 
+void
+lw_bitlock32_cv_wait(lw_uint32_t *lock,
+                     LW_IN lw_uint32_t lock_mask,
+                     LW_IN lw_uint32_t wait_mask,
+                     LW_IN lw_uint32_t cv_mask);
+
+void
+lw_bitlock32_cv_signal(lw_uint32_t *lock,
+                       LW_IN lw_uint32_t lock_mask,
+                       LW_IN lw_uint32_t wait_mask,
+                       LW_IN lw_uint32_t cv_mask);
+
+void
+lw_bitlock32_cv_broadcast(lw_uint32_t *lock,
+                          LW_IN lw_uint32_t lock_mask,
+                          LW_IN lw_uint32_t wait_mask,
+                          LW_IN lw_uint32_t cv_mask);
+
 void lw_bitlock32_lock_complete_wait(lw_uint32_t *lock);
 
 lw_int32_t
 lw_bitlock32_trylock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_mask, LW_IN lw_uint32_t wait_mask);
 
 lw_int32_t
-lw_bitlock32_trylock_set_payload(lw_uint32_t *lock,
-                                 LW_IN lw_uint32_t lock_mask,
-                                 LW_IN lw_uint32_t wait_mask,
-                                 LW_IN lw_uint32_t new_payload,
-                                 LW_OUT lw_uint32_t *curr_payload);
-
-lw_int32_t
-lw_bitlock32_trylock_if_payload(lw_uint32_t *lock,
-                                LW_IN lw_uint32_t lock_mask,
-                                LW_IN lw_uint32_t wait_mask,
-                                LW_IN lw_uint32_t payload,
-                                LW_OUT lw_uint32_t *curr_payload);
+lw_bitlock32_trylock_cmpxchng_payload(lw_uint32_t *lock,
+                                      LW_IN lw_uint32_t lock_mask,
+                                      LW_IN lw_uint32_t wait_mask,
+                                      LW_INOUT lw_uint32_t *curr_payload,
+                                      LW_IN lw_uint32_t new_payload);
 
 lw_bool_t
 lw_bitlock32_unlock_ret_wait_status(lw_uint32_t *lock,
@@ -135,11 +146,11 @@ lw_bitlock64_trylock_set_payload(lw_uint64_t *lock,
                                  LW_OUT lw_uint64_t *curr_payload);
 
 lw_int32_t
-lw_bitlock64_trylock_if_payload(lw_uint64_t *lock,
-                                LW_IN lw_uint64_t lock_mask,
-                                LW_IN lw_uint64_t wait_mask,
-                                LW_IN lw_uint64_t payload,
-                                LW_OUT lw_uint64_t *curr_payload);
+lw_bitlock64_trylock_cmpxchng_payload(lw_uint64_t *lock,
+                                      LW_IN lw_uint64_t lock_mask,
+                                      LW_IN lw_uint64_t wait_mask,
+                                      LW_INOUT lw_uint64_t *curr_payload,
+                                      LW_IN lw_uint64_t new_payload);
 
 lw_bool_t
 lw_bitlock64_unlock_ret_wait_status(lw_uint64_t *lock,
@@ -158,5 +169,24 @@ lw_bitlock64_swap_payload(lw_uint64_t *lock,
                           lw_uint64_t wait_mask,
                           lw_uint64_t *current_payload,
                           lw_uint64_t new_payload);
+
+void
+lw_bitlock64_cv_wait(lw_uint64_t *lock,
+                     LW_IN lw_uint64_t lock_mask,
+                     LW_IN lw_uint64_t wait_mask,
+                     LW_IN lw_uint64_t cv_mask);
+
+void
+lw_bitlock64_cv_signal(lw_uint64_t *lock,
+                       LW_IN lw_uint64_t lock_mask,
+                       LW_IN lw_uint64_t wait_mask,
+                       LW_IN lw_uint64_t cv_mask);
+
+void
+lw_bitlock64_cv_broadcast(lw_uint64_t *lock,
+                          LW_IN lw_uint64_t lock_mask,
+                          LW_IN lw_uint64_t wait_mask,
+                          LW_IN lw_uint64_t cv_mask);
+
 
 #endif /* __LW_BITLOCK_H__ */
