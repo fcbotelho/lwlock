@@ -194,7 +194,6 @@ lw_bitlock32_lock(lw_uint32_t *lock,
     lw_dl_unlock_writer(wait_list);
     if (sync) {
         lw_waiter_wait(waiter);
-        lw_assert(*lock & lock_mask);
         waiter->event.wait_src = NULL;
     }
     return;
@@ -274,7 +273,6 @@ lw_bitlock32_lock_if_payload(lw_uint32_t *lock,
     lw_dl_unlock_writer(wait_list);
     if (sync) {
         lw_waiter_wait(waiter);
-        lw_assert(*lock & lock_mask);
         waiter->event.wait_src = NULL;
     }
     return TRUE;
@@ -558,7 +556,6 @@ lw_bitlock64_lock(lw_uint64_t *lock,
     lw_dl_unlock_writer(wait_list);
     if (sync) {
         lw_waiter_wait(waiter);
-        lw_assert(*lock & lock_mask);
         waiter->event.wait_src = NULL;
     }
     return;
@@ -606,7 +603,6 @@ lw_bitlock32_cv_wait(lw_uint32_t *lock,
     lw_bitlock32_unlock(lock, lock_mask, wait_mask);
     /* Wait. */
     lw_waiter_wait(waiter);
-    lw_assert(*lock & lock_mask);
     waiter->event.wait_src = NULL;
     return;
 }
@@ -806,7 +802,6 @@ lw_bitlock64_lock_if_payload(lw_uint64_t *lock,
     lw_dl_unlock_writer(wait_list);
     if (sync) {
         lw_waiter_wait(waiter);
-        lw_assert(*lock & lock_mask);
         waiter->event.wait_src = NULL;
     }
     return TRUE;
@@ -1007,7 +1002,6 @@ lw_bitlock64_cv_wait(lw_uint64_t *lock,
     lw_bitlock64_unlock(lock, lock_mask, wait_mask);
     /* Wait. */
     lw_waiter_wait(waiter);
-    lw_assert(*lock & lock_mask);
     waiter->event.wait_src = NULL;
     return;
 }
@@ -1130,5 +1124,99 @@ lw_bitlock64_cv_broadcast(lw_uint64_t *lock,
     lw_dl_unlock_writer(wait_list);
     /* Clear wait bit. Lock is held, so no race can take place. */
     LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(lock, ~cv_mask, &old, 0));
+    return;
+}
+
+/**
+ * lw_bitlock64_rekey -- move all waiters related to this lock to the new lock.
+ * Caller must have the locks held and is responsible for ensuring that no new
+ * waiters arrive for the old lock once rekey is started.
+ *
+ * @param lock (i) the 64-bit word that holds the bits that form the lock.
+ * @param lock (i) the 64-bit word that is the new lock pointer.
+ * @param lock_mask (i) the bit that represents lock being held.
+ * @param wait_mask (i) the bit that is set when waiting.
+ * @param cv_mask (i) the bit that is set when doing cond wait.
+ */
+void
+lw_bitlock64_rekey(LW_IN lw_uint64_t *lock,
+                   LW_INOUT lw_uint64_t *newlock,
+                   LW_IN lw_uint64_t lock_mask,
+                   LW_IN lw_uint64_t wait_mask,
+                   LW_IN lw_uint64_t cv_mask)
+{
+    lw_uint64_t wait_list_idx;
+    lw_dlist_t *wait_list;
+    lw_dlist_t waiters_to_move;
+    lw_delem_t *elem;
+    lw_uint64_t cv_tag = lock_mask | cv_mask;
+    lw_uint64_t wait_tag = lock_mask | wait_mask;
+    lw_uint64_t old;
+    lw_bool_t have_cv_waiter = FALSE;
+    lw_bool_t have_lock_waiter = FALSE;
+
+    lw_assert(lock_mask != wait_mask);
+    lw_assert(cv_mask != wait_mask);
+    lw_assert(lock_mask != cv_mask);
+    lw_assert(lock_mask != 0 && wait_mask != 0 && cv_mask != 0);
+    lw_assert(LW_IS_POW2(lock_mask) && LW_IS_POW2(wait_mask) && LW_IS_POW2(cv_mask));
+    lw_assert((*lock & lock_mask));
+    lw_assert((*newlock & lock_mask));
+
+    old = *lock;
+    if (!((old & wait_mask) == 1 || (old & cv_mask) == 1)) {
+        /* Nothing to move. */
+        return;
+    }
+
+    lw_dl_init(&waiters_to_move);
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+
+    lw_dl_lock_writer(wait_list);
+    elem = wait_list->head;
+    while (elem != NULL) {
+        lw_waiter_t *waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.iface.link);
+        lw_delem_t *next = lw_dl_next(wait_list, elem);
+        if (waiter->event.wait_src == lock &&
+            (waiter->event.tag == cv_tag || waiter->event.tag == wait_tag)) {
+            /* Found a waiter. */
+            lw_dl_remove(wait_list, elem);
+            lw_dl_append_at_end(&waiters_to_move, elem);
+            waiter->event.wait_src = newlock;
+            if (!have_lock_waiter) {
+                have_lock_waiter = waiter->event.tag == wait_tag;
+            }
+            if (!have_cv_waiter) {
+                have_cv_waiter = waiter->event.tag == cv_tag;
+            }
+        }
+        elem = next;
+    }
+    lw_dl_unlock_writer(wait_list);
+
+    wait_list_idx = LW_BITLOCK_PTR_HASH32(newlock);
+    wait_list_idx = wait_list_idx % wait_lists_count;
+    wait_list = &wait_lists[wait_list_idx];
+
+    lw_dl_lock_writer(wait_list);
+    lw_verify(lw_dl_get_count(&waiters_to_move) > 0);
+    elem = waiters_to_move.head;
+    while (elem != NULL) {
+        lw_delem_t *next = lw_dl_next(&waiters_to_move, elem);
+        lw_dl_remove(&waiters_to_move, elem);
+        lw_dl_append_at_end(wait_list, elem);
+        elem = next;
+    }
+    /* Set appropirate wait/cv bits on new lock. */
+    if (have_lock_waiter) {
+        old = 0;
+        LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(newlock, ~wait_mask, &old, wait_mask));
+    }
+    if (have_cv_waiter) {
+        old = 0;
+        LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(newlock, ~cv_mask, &old, cv_mask));
+    }
     return;
 }

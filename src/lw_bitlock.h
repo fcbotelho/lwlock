@@ -188,5 +188,11 @@ lw_bitlock64_cv_broadcast(lw_uint64_t *lock,
                           LW_IN lw_uint64_t wait_mask,
                           LW_IN lw_uint64_t cv_mask);
 
+void
+lw_bitlock64_rekey(LW_IN lw_uint64_t *lock,
+                   LW_INOUT lw_uint64_t *newlock,
+                   LW_IN lw_uint64_t lock_mask,
+                   LW_IN lw_uint64_t wait_mask,
+                   LW_IN lw_uint64_t cv_mask);
 
 #endif /* __LW_BITLOCK_H__ */
