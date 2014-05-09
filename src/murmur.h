@@ -12,7 +12,7 @@
 
 #define mmix3(h,k) { k *= m1; k = rot(k,r1); k *= m2; h *= 3; h ^= k; }
 
-lw_uint32_t
+static inline lw_uint32_t
 Murmur3(const lw_uint8_t *key, lw_uint32_t len, lw_uint32_t seed )
 {
     const lw_uint32_t m1 = 0x0acffe3d, m2 = 0x0e4ef5f3, m3 = 0xa729a897;
@@ -42,7 +42,7 @@ Murmur3(const lw_uint8_t *key, lw_uint32_t len, lw_uint32_t seed )
 }
 
 /* Version of Murmur3 above adapated specifically for hashing a pointer itself. */
-lw_uint32_t
+static inline lw_uint32_t
 Murmur3Ptr(const void *ptr, lw_uint32_t seed)
 {
     const lw_uint32_t m1 = 0x0acffe3d, m2 = 0x0e4ef5f3, m3 = 0xa729a897;

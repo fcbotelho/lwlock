@@ -117,9 +117,9 @@ lw_bitlock32_init(lw_uint32_t *lock,
                   LW_IN lw_uint32_t wait_mask);
 
 void
-lw_bitlock32_destroy(lw_uint32_t *lock,
-                     LW_IN lw_uint32_t lock_mask,
-                     LW_IN lw_uint32_t wait_mask);
+lw_bitlock64_destroy(lw_uint64_t *lock,
+                     LW_IN lw_uint64_t lock_mask,
+                     LW_IN lw_uint64_t wait_mask);
 
 void
 lw_bitlock64_lock(lw_uint64_t *lock,

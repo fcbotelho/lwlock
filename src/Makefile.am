@@ -9,7 +9,8 @@ include_HEADERS = lw_lock.h \
 				  lw_bitlock.h \
 				  atomic_list.h \
 				  murmur.h \
-				  lf_stack.h
+				  lf_stack.h \
+				  lw_monitor.h
 
 liblwlock_la_SOURCES =  lw_lock.h \
                         lw_types.h \
@@ -39,7 +40,8 @@ liblwlock_la_SOURCES =  lw_lock.h \
 						lf_stack.c
 						lw_bitlock.c \
 						atomic_list.c \
-						lf_stack.c
+						lf_stack.c \
+						lw_monitor.c
 
 liblwlock_la_LDFLAGS = -version-info 0:0:0
 liblwlock_la_LIBADD  = $(PTHREAD_LIBS)
