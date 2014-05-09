@@ -400,7 +400,6 @@ lw_bitlock32_unlock_ret_wait_status(lw_uint32_t *lock,
         lw_bitlock32_clear_wait_mask(lock, lock_mask, wait_mask);
     }
     lw_dl_unlock_writer(wait_list);
-    lw_waiter_wakeup(to_wake_up, lock);
 
     return TRUE;
 }
@@ -882,10 +881,10 @@ lw_bitlock64_trylock_cmpxchng_payloadd(lw_uint64_t *lock,
  * @param wait_mask (i) the bit that is set when waiting.
  * @returns TRUE if the lock was handed off to a waiter. FALSE otherwise.
  */
-lw_bool_t
-lw_bitlock64_unlock_ret_wait_status(lw_uint64_t *lock,
-                                    LW_IN lw_uint64_t lock_mask,
-                                    LW_IN lw_uint64_t wait_mask)
+lw_waiter_t *
+lw_bitlock64_unlock_return_waiter(lw_uint64_t *lock,
+                                  LW_IN lw_uint64_t lock_mask,
+                                  LW_IN lw_uint64_t wait_mask)
 {
     lw_uint64_t wait_list_idx;
     lw_dlist_t *wait_list;
@@ -900,7 +899,7 @@ lw_bitlock64_unlock_ret_wait_status(lw_uint64_t *lock,
 
     if (lw_bitlock64_drop_lock_if_no_waiters(lock, lock_mask, wait_mask)) {
         /* All done. */
-        return FALSE;
+        return NULL;
     }
 
     wait_list_idx = LW_BITLOCK_PTR_HASH32(lock);
@@ -929,9 +928,7 @@ lw_bitlock64_unlock_ret_wait_status(lw_uint64_t *lock,
         lw_bitlock64_clear_wait_mask(lock, lock_mask, wait_mask);
     }
     lw_dl_unlock_writer(wait_list);
-    lw_waiter_wakeup(to_wake_up, lock);
-
-    return TRUE;
+    return to_wake_up;
 }
 
 /**
@@ -1209,14 +1206,18 @@ lw_bitlock64_rekey(LW_IN lw_uint64_t *lock,
         lw_dl_append_at_end(wait_list, elem);
         elem = next;
     }
-    /* Set appropirate wait/cv bits on new lock. */
+    /* Set appropirate wait/cv bits on new lock and clear from old lock. */
     if (have_lock_waiter) {
         old = 0;
         LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(newlock, ~wait_mask, &old, wait_mask));
+        old = wait_mask;
+        LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(newlock, ~wait_mask, &old, 0));
     }
     if (have_cv_waiter) {
         old = 0;
         LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(newlock, ~cv_mask, &old, cv_mask));
+        old = cv_mask;
+        LW_IGNORE_RETURN_VALUE(lw_uint64_swap_with_mask(newlock, ~cv_mask, &old, 0));
     }
     return;
 }

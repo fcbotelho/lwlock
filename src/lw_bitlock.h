@@ -9,6 +9,7 @@
 #define __LW_BITLOCK_H__
 
 #include "lw_types.h"
+#include "lw_waiter.h"
 
 /*
  * Bitlocks: locks made up of just 2 bits from a 32-bit or 64-bit value. The rest
@@ -152,15 +153,18 @@ lw_bitlock64_trylock_cmpxchng_payload(lw_uint64_t *lock,
                                       LW_INOUT lw_uint64_t *curr_payload,
                                       LW_IN lw_uint64_t new_payload);
 
-lw_bool_t
-lw_bitlock64_unlock_ret_wait_status(lw_uint64_t *lock,
-                                    LW_IN lw_uint64_t lock_mask,
-                                    LW_IN lw_uint64_t wait_mask);
+lw_waiter_t *
+lw_bitlock64_unlock_return_waiter(lw_uint64_t *lock,
+                                  LW_IN lw_uint64_t lock_mask,
+                                  LW_IN lw_uint64_t wait_mask);
 
 static inline void ALWAYS_INLINED
 lw_bitlock64_unlock(lw_uint64_t *lock, LW_IN lw_uint64_t lock_mask, LW_IN lw_uint64_t wait_mask)
 {
-    LW_IGNORE_RETURN_VALUE(lw_bitlock64_unlock_ret_wait_status(lock, lock_mask, wait_mask));
+    lw_waiter_t *waiter = lw_bitlock64_unlock_return_waiter(lock, lock_mask, wait_mask);
+    if (waiter != NULL) {
+        lw_waiter_wakeup(waiter, lock);
+    }
 }
 
 lw_bool_t
