@@ -83,12 +83,12 @@ lw_lock_common_acquire_lock(LW_INOUT void *lock,
             break;
         case LW_LOCK_TYPE_BITLOCK32: {
             lw_bitlock32_spec_t *spec = (lw_bitlock32_spec_t *)lock;
-            lw_bitlock32_lock(spec->lock, spec->lock_mask, spec->wait_mask, TRUE);
+            lw_bitlock32_lock(spec->lock, spec->lock_mask, spec->wait_mask);
             break;
         }
         case LW_LOCK_TYPE_BITLOCK64: {
             lw_bitlock64_spec_t *spec = (lw_bitlock64_spec_t *)lock;
-            lw_bitlock64_lock(spec->lock, spec->lock_mask, spec->wait_mask, TRUE);
+            lw_bitlock64_lock(spec->lock, spec->lock_mask, spec->wait_mask);
             break;
         }
         case LW_LOCK_TYPE_NONE:

@@ -29,6 +29,40 @@ typedef struct {
     lw_uint8_t  pad_for_thread_event[sizeof(lw_thread_event_t) - sizeof(lw_base_event_t)];
 } lw_waiter_global_t;
 
+static lw_waiter_t *
+lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain);
+
+static lw_waiter_t *
+lw_waiter_domain_get_global(LW_INOUT lw_waiter_domain_t *domain);
+
+static lw_waiter_t *
+lw_waiter_domain_from_id_global(LW_INOUT lw_waiter_domain_t *domain,
+                                LW_IN lw_uint32_t id);
+static void
+lw_waiter_domain_free_global(LW_INOUT lw_waiter_domain_t *domain,
+                             LW_INOUT lw_waiter_t *waiter);
+
+typedef struct {
+    lw_waiter_domain_t     lw_wgd_domain; 		/* Keep this first */
+    lw_waiter_global_t     *lw_wgd_waiters[256];
+    lw_uint32_t            lw_wgd_waiters_cnt; 		/* Number of allocated elements in global_waiters */
+    lw_dlist_t             lw_wgd_free_list;
+    pthread_key_t          lw_wgd_waiter_key; 		/* used for cleanup */
+} lw_waiter_global_domain_t;
+
+static lw_waiter_global_domain_t lw_global_waiters_domain;
+
+lw_waiter_domain_t *lw_waiter_global_domain =
+    &(lw_global_waiters_domain.lw_wgd_domain);
+
+pthread_mutex_t lw_waiter_global_domain_lock;
+
+#define LW_WAITERS_PER_ARRAY   (256)
+#define LW_WAITERS_GLOBAL_SIZE \
+    (sizeof(lw_global_waiters_domain.lw_wgd_waiters) / \
+    sizeof(lw_global_waiters_domain.lw_wgd_waiters[0]))
+
+
 /* Functions used by thread event. */
 static void lw_thread_event_signal(LW_INOUT lw_event_t _event, LW_INOUT void *arg);
 static int
@@ -166,40 +200,6 @@ lw_waiter_global_event_destroy(LW_INOUT lw_waiter_domain_t *domain,
     event->base.iface.magic = 0;
 #endif
 }
-
-static lw_waiter_t *
-lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain);
-
-static lw_waiter_t *
-lw_waiter_domain_get_global(LW_INOUT lw_waiter_domain_t *domain);
-
-static lw_waiter_t *
-lw_waiter_domain_from_id_global(LW_INOUT lw_waiter_domain_t *domain,
-                                LW_IN lw_uint32_t id);
-static void
-lw_waiter_domain_free_global(LW_INOUT lw_waiter_domain_t *domain,
-                             LW_INOUT lw_waiter_t *waiter);
-
-typedef struct {
-    lw_waiter_domain_t     lw_wgd_domain; 		/* Keep this first */
-    lw_waiter_global_t     *lw_wgd_waiters[256];
-    lw_uint32_t            lw_wgd_waiters_cnt; 		/* Number of allocated elements in global_waiters */
-    lw_dlist_t             lw_wgd_free_list;
-    pthread_key_t          lw_wgd_waiter_key; 		/* used for cleanup */
-} lw_waiter_global_domain_t;
-
-static lw_waiter_global_domain_t lw_global_waiters_domain;
-
-lw_waiter_domain_t *lw_waiter_global_domain =
-    &(lw_global_waiters_domain.lw_wgd_domain);
-
-pthread_mutex_t lw_waiter_global_domain_lock;
-
-#define LW_WAITERS_PER_ARRAY   (256)
-#define LW_WAITERS_GLOBAL_SIZE \
-    (sizeof(lw_global_waiters_domain.lw_wgd_waiters) / \
-    sizeof(lw_global_waiters_domain.lw_wgd_waiters[0]))
-
 
 /**
  * Allocate one array of lw_waiter_t structures.

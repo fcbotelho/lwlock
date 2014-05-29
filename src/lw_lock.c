@@ -9,6 +9,7 @@
 
 #include "lw_lock.h"
 #include "lw_atomic.h"
+#include "lw_bitlock.h"
 #include "lw_cycles.h"
 #include "lw_event.h"
 
@@ -19,11 +20,13 @@ lw_lock_init(lw_waiter_domain_t *domain)
     lw_atomic_init();
     lw_waiter_domain_init_global(domain);
     lw_cycles_init();
+    lw_bitlock_module_init(0, NULL);
 }
 
 void
 lw_lock_shutdown(void)
 {
+    lw_bitlock_module_deinit();
     lw_atomic_destroy();
     lw_waiter_domain_shutdown_global();
 }

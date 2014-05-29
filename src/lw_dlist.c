@@ -125,8 +125,8 @@ lw_dl_insert_after(LW_INOUT lw_dlist_t *list,
     list->count++;
 
 #ifdef LW_DEBUG
-    elem->list = list;
-    elem->magic = LW_DL_ON_LIST;
+    new->list = list;
+    new->magic = LW_DL_ON_LIST;
 #endif
 }
 

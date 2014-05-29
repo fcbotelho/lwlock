@@ -312,7 +312,7 @@ top:
     }
 
     lw_bitlock64_lock(&monitor->next.atomic64, monitor_lock_bit.atomic64,
-                      monitor_wait_bit.atomic64, TRUE);
+                      monitor_wait_bit.atomic64);
 
     if (got_lock) {
         /* Did get lock. This is checking to see if another thread had inserted a copy in the chain. */
@@ -331,12 +331,15 @@ top:
                                               another_copy->next.fields.ptr61);
             lw_verify(popped);
 
-            lw_bitlock64_lock(&another_copy->ptrlock.atomic64, monitor_lock_bit.atomic64,
-                              monitor_wait_bit.atomic64, FALSE); // Don't wait within function.
+            const lw_bool_t got_lock = lw_bitlock64_lock_async(&another_copy->ptrlock.atomic64,
+                                                               monitor_lock_bit.atomic64,
+                                                               monitor_wait_bit.atomic64);
             lw_bitlock64_unlock(&monitor->next.atomic64,
                                 monitor_lock_bit.atomic64,
                                 monitor_wait_bit.atomic64);
-            lw_bitlock64_lock_complete_wait(&another_copy->ptrlock.atomic64);
+            if (!got_lock) {
+                lw_bitlock_complete_wait(&another_copy->ptrlock.atomic64);
+            }
             lw_bitlock64_rekey(&another_copy->ptrlock.atomic64, &monitor->ptrlock.atomic64,
                                monitor_lock_bit.atomic64, monitor_wait_bit.atomic64,
                                monitor_cv_bit.atomic64);
@@ -356,7 +359,7 @@ top:
         lw_bitlock64_unlock(&monitor->next.atomic64,
                             monitor_lock_bit.atomic64,
                             monitor_wait_bit.atomic64);
-        lw_bitlock64_lock_complete_wait(&monitor->ptrlock.atomic64);
+        lw_bitlock_complete_wait(&monitor->ptrlock.atomic64);
         return monitor_get_id(monitor);
     } else {
         lw_monitor_t *monitor_to_add;
@@ -383,12 +386,15 @@ top:
             return monitor_get_id(monitor_to_add);
         } else {
             /* Found an existing entry. */
-            lw_bitlock64_lock(&existing_monitor->ptrlock.atomic64, monitor_lock_bit.atomic64,
-                              monitor_wait_bit.atomic64, FALSE); // Don't wait within function.
+            const lw_bool_t got_lock = lw_bitlock64_lock_async(&existing_monitor->ptrlock.atomic64,
+                                                               monitor_lock_bit.atomic64,
+                                                               monitor_wait_bit.atomic64);
             lw_bitlock64_unlock(&monitor->next.atomic64,
                                 monitor_lock_bit.atomic64,
                                 monitor_wait_bit.atomic64);
-            lw_bitlock64_lock_complete_wait(&existing_monitor->ptrlock.atomic64);
+            if (!got_lock) {
+                lw_bitlock_complete_wait(&existing_monitor->ptrlock.atomic64);
+            }
             return monitor_get_id(existing_monitor);
         }
     }
@@ -433,8 +439,9 @@ lw_monitor_unlock(void *ptr, lw_monitor_id_t id)
     slot = hash % fixed_count;
     chain_head = &monitors[slot];
     /* XXX/TODO: What if the system is already shut down at this point? */
-    lw_bitlock64_lock(&chain_head->next.atomic64, monitor_lock_bit.atomic64,
-                      monitor_wait_bit.atomic64, TRUE);
+    lw_bitlock64_lock(&chain_head->next.atomic64,
+                      monitor_lock_bit.atomic64,
+                      monitor_wait_bit.atomic64);
     in_chain = find_monitor_for_ptr(chain_head, ptr, FALSE, NULL, &prev);
     lw_verify(in_chain == monitor || in_chain == NULL);
     if (in_chain == NULL) {

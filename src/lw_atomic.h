@@ -423,7 +423,7 @@ lw_uint64_lock_xadd(LW_INOUT volatile lw_uint64_t *var,
  */
 static inline lw_bool_t ALWAYS_INLINED
 lw_uint64_swap(LW_INOUT lw_uint64_t volatile *var,
-               LW_INOUT lw_uint64_t *old,
+               LW_INOUT lw_uint64_t volatile *old,
                LW_IN lw_uint64_t new)
 {
     lw_uint64_t curval;

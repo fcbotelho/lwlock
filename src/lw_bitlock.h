@@ -50,12 +50,23 @@ lw_bitlock32_lock_if_payload(lw_uint32_t *lock,
                              LW_IN lw_uint32_t wait_mask,
                              lw_uint32_t *payload,
                              LW_IN lw_bool_t sync);
+lw_bool_t
+lw_bitlock32_lock_async(lw_uint32_t *lock,
+                        LW_IN lw_uint32_t lock_mask,
+                        LW_IN lw_uint32_t wait_mask);
 
-void
+void lw_bitlock_complete_wait(void *lock);
+
+static inline void ALWAYS_INLINED
 lw_bitlock32_lock(lw_uint32_t *lock,
                   LW_IN lw_uint32_t lock_mask,
-                  LW_IN lw_uint32_t wait_mask,
-                  LW_IN lw_bool_t sync);
+                  LW_IN lw_uint32_t wait_mask)
+{
+    lw_bool_t got_lock = lw_bitlock32_lock_async(lock, lock_mask, wait_mask);
+    if (!got_lock) {
+        lw_bitlock_complete_wait(lock);
+    }
+}
 
 void
 lw_bitlock32_cv_wait(lw_uint32_t *lock,
@@ -75,8 +86,6 @@ lw_bitlock32_cv_broadcast(lw_uint32_t *lock,
                           LW_IN lw_uint32_t wait_mask,
                           LW_IN lw_uint32_t cv_mask);
 
-void lw_bitlock32_lock_complete_wait(lw_uint32_t *lock);
-
 lw_int32_t
 lw_bitlock32_trylock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_mask, LW_IN lw_uint32_t wait_mask);
 
@@ -87,15 +96,18 @@ lw_bitlock32_trylock_cmpxchng_payload(lw_uint32_t *lock,
                                       LW_INOUT lw_uint32_t *curr_payload,
                                       LW_IN lw_uint32_t new_payload);
 
-lw_bool_t
-lw_bitlock32_unlock_ret_wait_status(lw_uint32_t *lock,
-                                    LW_IN lw_uint32_t lock_mask,
-                                    LW_IN lw_uint32_t wait_mask);
+lw_waiter_t *
+lw_bitlock32_unlock_return_waiter(lw_uint32_t *lock,
+                                  LW_IN lw_uint32_t lock_mask,
+                                  LW_IN lw_uint32_t wait_mask);
 
 static inline void ALWAYS_INLINED
 lw_bitlock32_unlock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_mask, LW_IN lw_uint32_t wait_mask)
 {
-    LW_IGNORE_RETURN_VALUE(lw_bitlock32_unlock_ret_wait_status(lock, lock_mask, wait_mask));
+    lw_waiter_t *waiter = lw_bitlock32_unlock_return_waiter(lock, lock_mask, wait_mask);
+    if (waiter != NULL) {
+        lw_waiter_wakeup(waiter, lock);
+    }
 }
 
 lw_bool_t
@@ -121,13 +133,21 @@ lw_bitlock64_destroy(lw_uint64_t *lock,
                      LW_IN lw_uint64_t lock_mask,
                      LW_IN lw_uint64_t wait_mask);
 
-void
+lw_bool_t
+lw_bitlock64_lock_async(lw_uint64_t *lock,
+                        LW_IN lw_uint64_t lock_mask,
+                        LW_IN lw_uint64_t wait_mask);
+
+static inline void ALWAYS_INLINED
 lw_bitlock64_lock(lw_uint64_t *lock,
                   LW_IN lw_uint64_t lock_mask,
-                  LW_IN lw_uint64_t wait_mask,
-                  LW_IN lw_bool_t sync);
-
-void lw_bitlock64_lock_complete_wait(lw_uint64_t *lock);
+                  LW_IN lw_uint64_t wait_mask)
+{
+    lw_bool_t got_lock = lw_bitlock64_lock_async(lock, lock_mask, wait_mask);
+    if (!got_lock) {
+        lw_bitlock_complete_wait(lock);
+    }
+}
 
 lw_bool_t
 lw_bitlock64_lock_if_payload(lw_uint64_t *lock,
@@ -138,13 +158,6 @@ lw_bitlock64_lock_if_payload(lw_uint64_t *lock,
 
 lw_int32_t
 lw_bitlock64_trylock(lw_uint64_t *lock, LW_IN lw_uint64_t lock_mask, LW_IN lw_uint64_t wait_mask);
-
-lw_int32_t
-lw_bitlock64_trylock_set_payload(lw_uint64_t *lock,
-                                 LW_IN lw_uint64_t lock_mask,
-                                 LW_IN lw_uint64_t wait_mask,
-                                 LW_IN lw_uint64_t new_payload,
-                                 LW_OUT lw_uint64_t *curr_payload);
 
 lw_int32_t
 lw_bitlock64_trylock_cmpxchng_payload(lw_uint64_t *lock,
@@ -193,7 +206,7 @@ lw_bitlock64_cv_broadcast(lw_uint64_t *lock,
                           LW_IN lw_uint64_t cv_mask);
 
 void
-lw_bitlock64_rekey(LW_IN lw_uint64_t *lock,
+lw_bitlock64_rekey(LW_INOUT lw_uint64_t *lock,
                    LW_INOUT lw_uint64_t *newlock,
                    LW_IN lw_uint64_t lock_mask,
                    LW_IN lw_uint64_t wait_mask,

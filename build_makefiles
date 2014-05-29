@@ -12,7 +12,7 @@ autoreconf -ifv
 
 if [ "$#" -eq 1 ] && [ "$1" = "LW_DEBUG" ]; then
     echo "./configure --enable-debug"
-    ./configure --enable-debug
+    CFLAGS="-O0 -g -Wall -Werror" ./configure --enable-debug
 else
     echo "./configure"
     ./configure
