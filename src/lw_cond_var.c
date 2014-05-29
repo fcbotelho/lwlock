@@ -35,7 +35,7 @@ lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
     int wait_result = 0;
 
     waiter = lw_waiter_get();
-    lw_assert(waiter->event.wait_src == NULL);
+    lw_waiter_assert_src(waiter, NULL);
     lw_assert(waiter->next == LW_WAITER_ID_MAX);
     lw_mutex2b_lock(&lwcondvar->waitq_lock);
     if (lwcondvar->waitq == LW_WAITER_ID_MAX) {
@@ -51,7 +51,7 @@ lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
         existing_waiter->next = waiter->id;
         waiter->prev = existing_waiter->id;
     }
-    waiter->event.wait_src = lwcondvar;
+    lw_waiter_set_src(waiter, lwcondvar);
     lw_mutex2b_unlock(&lwcondvar->waitq_lock);
     /* Now drop the mutex and wait */
     lw_lock_common_drop_lock(_mutex, type);
@@ -60,7 +60,8 @@ lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
         lw_assert(abstime != NULL);
         lw_assert(wait_result == ETIMEDOUT);
         lw_bool_t got_signal_while_timing_out = FALSE;
-        lw_mutex2b_lock(&lwcondvar->waitq_lock);
+        lw_waiter_t *temp_waiter = waiter->domain->alloc_waiter(waiter->domain);
+        lw_mutex2b_lock_with_waiter(&lwcondvar->waitq_lock, temp_waiter);
         /* Need to extract the waiter out of the queue if it is still
          * on it.
          */
@@ -75,9 +76,9 @@ lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
                 lwcondvar->waitq = waiter->next;
             }
             lw_waiter_remove_from_id_list(waiter);
-            waiter->event.wait_src = NULL;
         }
-        lw_mutex2b_unlock(&lwcondvar->waitq_lock);
+        lw_mutex2b_unlock_with_waiter(&lwcondvar->waitq_lock, temp_waiter);
+        waiter->domain->free_waiter(waiter->domain, temp_waiter);
         if (got_signal_while_timing_out) {
             /* There is a pending signal (or soon will be) for this
              * waiter that has to be consumed. This could in theory take
@@ -87,6 +88,7 @@ lw_condvar_timedwait(LW_INOUT lw_condvar_t *lwcondvar,
             lw_waiter_wait(waiter);
         }
     }
+    lw_waiter_clear_src(waiter);
 
     /* Re-acquire mutex on being woken up before exiting the function. */
     lw_lock_common_acquire_lock(_mutex, type, waiter);

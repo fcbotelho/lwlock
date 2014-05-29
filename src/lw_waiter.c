@@ -111,9 +111,7 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
     event->waiter_waiting = FALSE;
     event->signal_pending = FALSE;
     lw_verify(pthread_mutex_unlock(&event->mutex) == 0);
-    lw_verify(event->base.wait_src == src ||
-              event->base.wait_src == arg);
-    event->base.wait_src = NULL;
+    lw_verify(event->base.wait_src == src);
     return ret;
 }
 

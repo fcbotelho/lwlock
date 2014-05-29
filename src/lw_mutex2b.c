@@ -67,12 +67,10 @@ lw_mutex2b_find_oldest_waiter(lw_uint32_t _waitq, lw_uint32_t _owner)
 }
 
 void
-lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
+lw_mutex2b_lock_with_waiter(LW_INOUT lw_mutex2b_t *lw_mutex2b, lw_waiter_t *waiter)
 {
     lw_mutex2b_t old;
-    lw_waiter_t *waiter;
 
-    waiter = lw_waiter_get();
 #ifdef LW_DEBUG
     { /* Deadlock detection. */
          old = *lw_mutex2b;
@@ -104,11 +102,11 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
     }
 #endif
 
+    lw_waiter_set_src(waiter, lw_mutex2b);
     do {
         old = *lw_mutex2b;
         lw_assert(old != waiter->id);
         waiter->next = old;
-        waiter->event.wait_src = lw_mutex2b;
     } while (lw_uint16_cmpxchg(lw_mutex2b, old, waiter->id) != old);
 
     if (old != LW_WAITER_ID_MAX) {
@@ -118,22 +116,19 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
          * No need to retry getting the lock.
          */
         lw_mutex2b_assert_locked(lw_mutex2b);
-    } else {
-        /* Clear the wait_src pointer set earlier */
-        waiter->event.wait_src = NULL;
     }
+    /* Clear the wait_src pointer set earlier */
+    lw_waiter_clear_src(waiter);
 }
 
 void
-lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
+lw_mutex2b_unlock_with_waiter(LW_INOUT lw_mutex2b_t *lw_mutex2b, lw_waiter_t *waiter)
 {
     lw_mutex2b_t old;
     lw_mutex2b_t new;
-    lw_waiter_t *waiter;
     lw_waiter_t *waiter_to_wake_up = NULL;
     id_t owner_id;
 
-    waiter = lw_waiter_get();
     owner_id = waiter->id;
     do {
         old = *lw_mutex2b;

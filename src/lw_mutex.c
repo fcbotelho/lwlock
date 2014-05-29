@@ -65,7 +65,7 @@ lw_mutex_lock_async(LW_INOUT lw_mutex_t *lw_mutex)
     lw_waiter_t *waiter;
 
     waiter = lw_waiter_get();
-    lw_assert(waiter->event.wait_src == NULL);
+    lw_waiter_set_src(waiter, lw_mutex);
     lw_assert(waiter->next == LW_WAITER_ID_MAX);
     lw_assert(waiter->prev == LW_WAITER_ID_MAX);
     old = *lw_mutex;
@@ -76,18 +76,20 @@ lw_mutex_lock_async(LW_INOUT lw_mutex_t *lw_mutex)
             lw_assert(old.waitq == LW_WAITER_ID_MAX);
             new.owner = waiter->id;
             waiter->next = LW_WAITER_ID_MAX;
-            waiter->event.wait_src = NULL;
         } else {
             lw_verify(old.owner != waiter->id);
             waiter->next = old.waitq;
-            waiter->event.wait_src = lw_mutex;
             new.waitq = waiter->id;
         }
     } while (!lw_uint32_swap(&lw_mutex->val,
                              &old.val,
                              new.val));
 
-    return (new.owner == waiter->id);
+    if (new.owner == waiter->id) {
+        lw_waiter_clear_src(waiter);
+        return TRUE;
+    }
+    return FALSE;
 }
 
 void
@@ -97,6 +99,7 @@ lw_mutex_lock_complete_wait(LW_INOUT lw_mutex_t *lw_mutex)
     waiter = lw_waiter_get();
 
     lw_waiter_wait(waiter);
+    lw_waiter_clear_src(waiter);
     /* The thread waking this up will also transfer the lock to it.
      * No need to retry getting the lock.
      */
@@ -163,14 +166,14 @@ lw_mutex_setup_prev_id_pointers(LW_INOUT lw_mutex_t *lw_mutex,
 
     lw_assert(waiter_id < LW_WAITER_ID_MAX);
     waiter = lw_waiter_from_id(waiter_id);
-    lw_assert(waiter->event.wait_src == lw_mutex);
+    lw_waiter_assert_src(waiter, lw_mutex);
     while (waiter->next != LW_WAITER_ID_MAX) {
         next_waiter = lw_waiter_from_id(waiter->next);
         lw_assert(next_waiter->prev == LW_WAITER_ID_MAX ||
                   next_waiter->prev == waiter->id);
         next_waiter->prev = waiter->id;
         waiter = next_waiter;
-        lw_assert(waiter->event.wait_src == lw_mutex);
+        lw_waiter_assert_src(waiter, lw_mutex);
     }
     *lastwaiterp = waiter;
     return;

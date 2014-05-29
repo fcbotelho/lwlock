@@ -11,6 +11,7 @@
 #define __LW_MUTEX2B_H__
 
 #include "lw_types.h"
+#include "lw_waiter.h"
 
 /*
  * Lightweight mutex with 2 bytes.
@@ -33,14 +34,28 @@ lw_mutex2b_trylock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 
 /* Lock an lw_mutex2b. */
 extern void
-lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
+lw_mutex2b_lock_with_waiter(LW_INOUT lw_mutex2b_t *lw_mutex2b, lw_waiter_t *waiter);
+
+static inline void ALWAYS_INLINED
+lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
+{
+    lw_waiter_t *waiter = lw_waiter_get();
+    lw_mutex2b_lock_with_waiter(lw_mutex2b, waiter);
+}
 
 /*
  * Unlock an lwmutex2b. If there is a waiter, hand over the lock
  * to the oldest waiter.
  * */
 extern void
-lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
+lw_mutex2b_unlock_with_waiter(LW_INOUT lw_mutex2b_t *lw_mutex2b, lw_waiter_t *waiter);
+
+static inline void ALWAYS_INLINED
+lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
+{
+    lw_waiter_t *waiter = lw_waiter_get();
+    lw_mutex2b_unlock_with_waiter(lw_mutex2b, waiter);
+}
 
 #ifdef LW_DEBUG
 extern void lw_mutex2b_assert_locked(LW_INOUT lw_mutex2b_t *lw_mutex2b);

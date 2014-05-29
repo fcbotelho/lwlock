@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 /* No need to include pthread.h to use lw_lock libray. Including it
- * here in this test program to be able to use pthread_yiled() to
+ * here in this test program to be able to use pthread_yield() to
  * increase chance of race
  */
 #include <pthread.h>
@@ -83,7 +83,7 @@ readonly_region(void)
     lw_uint32_t i;
 
     lw_verify (data_lock_type == LW_LOCK_TYPE_LWRWLOCK_WR);
-    
+
     lw_lock_common_acquire_lock(data_lock, LW_LOCK_TYPE_LWRWLOCK_RD, NULL);
 
     for (i = 1; i < DATA_NUM; i++) {
@@ -146,7 +146,7 @@ do_test(void)
     }
 
     /* allow the threads to actually start working */
-    lw_mutex_unlock(&barrier_mutex); 
+    lw_mutex_unlock(&barrier_mutex);
 
     /* join the threads */
     for (i = 0; i < THRD_NUM; i++) {

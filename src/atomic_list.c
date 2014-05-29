@@ -293,6 +293,8 @@ adl_elem_delete_wait(adlist_t *const list,
     lw_assert(lw_rwlock_trywrlock(&elem->lock) != 0);
     adl_assert_elem_on_list(list, elem);
     old.atomic = elem->refcnt.atomic;
+    lw_waiter_set_src(waiter, list);
+    waiter->event.tag = LW_PTR_2_NUM(elem, lw_uint64_t);
     do {
         new.atomic = old.atomic;
         lw_assert(old.fields.pin_count == 0);
@@ -304,9 +306,8 @@ adl_elem_delete_wait(adlist_t *const list,
     /* Release lock on element so delete can proceed. */
     adl_unlock(list, &elem->lock, ADL_LOCK_SHARED);
     /* Now wait to be signalled. */
-    waiter->event.wait_src = list;
-    waiter->event.tag = LW_PTR_2_NUM(elem, lw_uint64_t);
     lw_waiter_wait(waiter);
+    lw_waiter_clear_src(waiter);
     waiter->event.tag = 0;
 }
 
@@ -1024,11 +1025,11 @@ adl_remove_elem_wait(adlist_t *const list,
 
     if (new.fields.pin_count != 0) {
         /* Need to wait. */
-        lw_waiter_assert_src(waiter, NULL);
-        waiter->event.wait_src = list;
+        lw_waiter_set_src(waiter, list);
         waiter->event.tag = LW_PTR_2_NUM(elem, lw_uint64_t);
         lw_waiter_wait(waiter);
         waiter->event.tag = 0;
+        lw_waiter_clear_src(waiter);
     } else {
         /* Element is ready to delete */
         lw_assert(elem->refcnt.fields.mask == 1);
