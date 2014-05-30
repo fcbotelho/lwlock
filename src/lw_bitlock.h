@@ -72,7 +72,8 @@ void
 lw_bitlock32_cv_wait(lw_uint32_t *lock,
                      LW_IN lw_uint32_t lock_mask,
                      LW_IN lw_uint32_t wait_mask,
-                     LW_IN lw_uint32_t cv_mask);
+                     LW_IN lw_uint32_t cv_mask,
+                     LW_IN lw_bool_t sync);
 
 void
 lw_bitlock32_cv_signal(lw_uint32_t *lock,
@@ -191,7 +192,8 @@ void
 lw_bitlock64_cv_wait(lw_uint64_t *lock,
                      LW_IN lw_uint64_t lock_mask,
                      LW_IN lw_uint64_t wait_mask,
-                     LW_IN lw_uint64_t cv_mask);
+                     LW_IN lw_uint64_t cv_mask,
+                     LW_IN lw_bool_t sync);
 
 void
 lw_bitlock64_cv_signal(lw_uint64_t *lock,

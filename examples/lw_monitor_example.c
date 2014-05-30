@@ -2,6 +2,7 @@
 #include "lw_lock.h"
 #include "lw_lock_common.h"
 #include "lw_debug.h"
+#include "lw_monitor.h"
 
 #include <stdio.h>
 /* No need to include pthread.h to use lw_lock libray. Including it
@@ -12,12 +13,11 @@
 #include <sched.h>
 #define cpu_yield() sched_yield()
 
-#define DATA_NUM    sizeof(lw_uint32_t)
-#define THRD_NUM    (2 * DATA_NUM)
+#define DATA_NUM    4
+#define THRD_NUM    16
 #define DATA_MAX_INCREMENT 100
 
 lw_uint64_t data[DATA_NUM];
-lw_uint32_t lock = 0;
 lw_mutex_t barrier_mutex;
 
 static void
@@ -30,26 +30,17 @@ clear_data(void)
 }
 
 static void
-critical_region(lw_uint32_t tid, lw_bool_t signal_only)
+critical_region(lw_uint32_t tid)
 {
     lw_uint32_t index = tid % DATA_NUM;
-    lw_uint32_t lock_mask = 0x1 << (8 * index);
-    lw_uint32_t wait_mask = 0x2 << (8 * index);
-    lw_uint32_t cv_mask = 0x4 << (8 * index);
-    lw_bitlock32_spec_t spec;
-    spec.lock = &lock;
-    spec.lock_mask = lock_mask;
-    spec.wait_mask = wait_mask;
+    lw_uint32_t num_contenders = THRD_NUM / DATA_NUM;
+    lw_uint32_t wait_for = tid / DATA_NUM;
 
-    lw_lock_common_acquire_lock(&spec, LW_LOCK_TYPE_BITLOCK32, NULL);
-
-    lw_bitlock32_cv_signal(&lock, lock_mask, wait_mask, cv_mask);
-    if (!signal_only) {
-        data[index] += 1;
-        lw_bitlock32_cv_wait(&lock, lock_mask, wait_mask, cv_mask, TRUE);
-    }
-
-    lw_lock_common_drop_lock(&spec, LW_LOCK_TYPE_BITLOCK32);
+    MONITOR_LOCK_START(&data[index]);
+    MONITOR_WAIT(data[index] % num_contenders == wait_for);
+    data[index] += 1;
+    MONITOR_BROADCAST;
+    MONITOR_LOCK_END;
 }
 
 static void *
@@ -63,9 +54,8 @@ wr_thread_fn(void *arg)
     lw_mutex_unlock(&barrier_mutex);
 
     for (i = 0; i < DATA_MAX_INCREMENT; i++) {
-        critical_region(tid, FALSE);
+        critical_region(tid);
     }
-    critical_region(tid, TRUE);
     return NULL;
 }
 
@@ -112,7 +102,7 @@ do_test(void)
 int main(int argc, char **argv)
 {
     /* common init */
-    lw_lock_init(NULL, 0, NULL, 0);
+    lw_lock_init(NULL, 0, NULL, DATA_NUM + THRD_NUM);
     lw_mutex_init(&barrier_mutex);
 
     do_test();

@@ -35,6 +35,9 @@ lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain);
 static lw_waiter_t *
 lw_waiter_domain_get_global(LW_INOUT lw_waiter_domain_t *domain);
 
+static void
+lw_waiter_domain_set_global(LW_INOUT lw_waiter_domain_t *domain, lw_waiter_t *waiter);
+
 static lw_waiter_t *
 lw_waiter_domain_from_id_global(LW_INOUT lw_waiter_domain_t *domain,
                                 LW_IN lw_uint32_t id);
@@ -114,7 +117,7 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
     lw_thread_event_t *event = LW_EVENT_2_THREAD_EVENT(_event);
     lw_assert(lw_thread_event_signal ==
               event->base.iface.signal);
-    void *src = event->base.wait_src;
+    // void *src = event->base.wait_src;
     lw_verify(pthread_mutex_lock(&event->mutex) == 0);
     lw_verify(!event->waiter_waiting);
     event->waiter_waiting = TRUE;
@@ -145,7 +148,7 @@ lw_thread_event_wait(LW_INOUT lw_event_t _event,
     event->waiter_waiting = FALSE;
     event->signal_pending = FALSE;
     lw_verify(pthread_mutex_unlock(&event->mutex) == 0);
-    lw_verify(event->base.wait_src == src);
+    // lw_verify(event->base.wait_src == src);
     return ret;
 }
 
@@ -263,6 +266,7 @@ lw_waiter_domain_init_global(lw_waiter_domain_t *domain)
     lw_global_waiters_domain.lw_wgd_domain.alloc_waiter = lw_waiter_domain_alloc_global;
     lw_global_waiters_domain.lw_wgd_domain.free_waiter = lw_waiter_domain_free_global;
     lw_global_waiters_domain.lw_wgd_domain.get_waiter = lw_waiter_domain_get_global;
+    lw_global_waiters_domain.lw_wgd_domain.set_waiter = lw_waiter_domain_set_global;
     lw_global_waiters_domain.lw_wgd_domain.id2waiter = lw_waiter_domain_from_id_global;
     lw_global_waiters_domain.lw_wgd_domain.waiter_event_init = lw_waiter_global_event_init;
     lw_global_waiters_domain.lw_wgd_domain.waiter_event_destroy = lw_waiter_global_event_destroy;
@@ -346,11 +350,12 @@ lw_waiter_t *
 lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain)
 {
     lw_waiter_t *waiter;
+    lw_delem_t *elem;
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
 
     pthread_mutex_lock(&lw_waiter_global_domain_lock);
-    waiter = LW_FIELD_2_OBJ_NULL_SAFE(lw_dl_dequeue(&gd->lw_wgd_free_list), *waiter,
-                                      event.iface.link);
+    elem = lw_dl_dequeue(&gd->lw_wgd_free_list);
+    waiter = LW_FIELD_2_OBJ_NULL_SAFE(elem, *waiter, event.iface.link);
 
     if (waiter == NULL) {
         if (gd->lw_wgd_waiters_cnt == 0) {
@@ -401,12 +406,23 @@ lw_waiter_domain_get_global(LW_INOUT lw_waiter_domain_t *domain)
     lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
     waiter = pthread_getspecific(gd->lw_wgd_waiter_key);
     if (waiter == NULL) {
-        int ret;
         waiter = domain->alloc_waiter(domain);
-        ret = pthread_setspecific(gd->lw_wgd_waiter_key, waiter);
-        lw_verify(ret == 0);
+        lw_waiter_domain_set_global(domain, waiter);
     }
     return waiter;
+}
+
+/*
+ * Can be used by caller to temporarily set a new waiter for the thread. Use with caution.
+ * User responsible for disposing of the temp waiter and restoring old one.
+ */
+static void
+lw_waiter_domain_set_global(LW_INOUT lw_waiter_domain_t *domain, lw_waiter_t *waiter)
+{
+    int ret;
+    lw_waiter_global_domain_t *gd = (lw_waiter_global_domain_t *)domain;
+    ret = pthread_setspecific(gd->lw_wgd_waiter_key, waiter);
+    lw_verify(ret == 0);
 }
 
 static lw_waiter_t *

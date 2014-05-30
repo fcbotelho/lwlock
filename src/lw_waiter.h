@@ -38,6 +38,9 @@ typedef void
 typedef lw_waiter_t *
 (*lw_waiter_get_func_t)(LW_INOUT lw_waiter_domain_t *domain);
 
+typedef void
+(*lw_waiter_set_func_t)(LW_INOUT lw_waiter_domain_t *domain, lw_waiter_t *waiter);
+
 typedef lw_waiter_t *
 (*lw_waiter_from_id_func_t)(LW_INOUT lw_waiter_domain_t *domain,
                             LW_IN lw_uint32_t id);
@@ -53,6 +56,7 @@ struct lw_waiter_domain_s {
     lw_waiter_alloc_func_t    alloc_waiter;
     lw_waiter_free_func_t     free_waiter;
     lw_waiter_get_func_t      get_waiter;
+    lw_waiter_set_func_t      set_waiter;
     lw_waiter_from_id_func_t  id2waiter;
     lw_waiter_event_init_func_t waiter_event_init;
     lw_waiter_event_destroy_func_t waiter_event_destroy;

@@ -46,7 +46,7 @@ struct lw_dlist_struct {
     lw_uint32_t count;   /**< Number of members in the list */
     lw_uint32_t _lock;   /**< Treated as lw_rwlock_t for locking. */
 #ifdef LW_DEBUG
-    lw_magic_t lw_dlist_magic;
+    lw_magic_t dl_magic;
 #endif
 };
 

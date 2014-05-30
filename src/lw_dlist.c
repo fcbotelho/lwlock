@@ -23,7 +23,7 @@ void
 lw_dl_init(LW_INOUT lw_dlist_t *list)
 {
 #ifdef LW_DEBUG
-    list->lw_dlist_magic = LW_DL_INITIALIZED;
+    list->dl_magic = LW_DL_INITIALIZED;
 #endif
     list->head = list->tail = NULL;
     list->count = 0;
@@ -34,7 +34,7 @@ void
 lw_dl_destroy(LW_INOUT lw_dlist_t *list)
 {
 #ifdef LW_DEBUG
-    list->lw_dlist_magic = 0;
+    list->dl_magic = 0;
 #endif
     lw_assert(list->count == 0);
     lw_assert(list->head == list->tail);

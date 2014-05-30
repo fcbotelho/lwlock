@@ -31,7 +31,9 @@ typedef lw_uint64_t lw_monitor_id_t;
 
 lw_monitor_id_t lw_monitor_lock(void *ptr);
 void lw_monitor_unlock(void *ptr, lw_monitor_id_t monitor);
-void lw_monitor_wait(void *ptr, lw_monitor_id_t monitor);
+void lw_monitor_wait(void *ptr, lw_monitor_id_t *monitor);
+void lw_monitor_signal(void *ptr, lw_monitor_id_t monitor);
+void lw_monitor_broadcast(void *ptr, lw_monitor_id_t monitor);
 
 /* Convenience wrappers for the common way of using monitors. */
 
@@ -43,8 +45,14 @@ void lw_monitor_wait(void *ptr, lw_monitor_id_t monitor);
 
 #define MONITOR_WAIT(_expr)                                                     \
         while (!(_expr)) {                                                      \
-            lw_monitor_wait(_monitored_ptr, _monitor);                          \
+            lw_monitor_wait(_monitored_ptr, &_monitor);                         \
         }
+
+#define MONITOR_SIGNAL                                                          \
+        lw_monitor_signal(_monitored_ptr, _monitor)                             \
+
+#define MONITOR_BROADCAST                                                       \
+        lw_monitor_broadcast(_monitored_ptr, _monitor)                          \
 
 #define MONITOR_LOCK_END                                                        \
         lw_monitor_unlock(_monitored_ptr, _monitor);                            \

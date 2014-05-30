@@ -187,7 +187,7 @@ print_expected_result(void)
 int main(int argc, char **argv)
 {
     /* common init */
-    lw_lock_init(NULL);
+    lw_lock_init(NULL, 0, NULL, 0);
     lw_mutex_init(&barrier_mutex);
 
     print_expected_result();

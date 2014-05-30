@@ -26,7 +26,10 @@
  * It has to be called before using any API in the lw_lock library.
  */
 extern void
-lw_lock_init(lw_waiter_domain_t *domain);
+lw_lock_init(lw_waiter_domain_t *domain,
+             lw_uint32_t bitlock_lists_count,
+             void *bitlock_wait_list_memory,
+             lw_uint32_t num_monitors);
 
 /**
  * Cleanup function

@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     pthread_t prod_thrds[PRODUCERS];
     int i;
 
-    lw_lock_init(NULL);
+    lw_lock_init(NULL, 0, NULL, 0);
 
     lw_condvar_init(&condvar_newdata);
     lw_condvar_init(&condvar_newspace);

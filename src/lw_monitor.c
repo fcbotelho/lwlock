@@ -185,6 +185,7 @@ lw_monitor_alloc(void *ptr)
 static void
 lw_monitor_release(lw_monitor_t *monitor)
 {
+    monitor->ptrlock.fields.ptr61 = 0;
     lw_bitlock64_unlock(&monitor->ptrlock.atomic64,
                         monitor_lock_bit.atomic64,
                         monitor_wait_bit.atomic64);
@@ -192,8 +193,53 @@ lw_monitor_release(lw_monitor_t *monitor)
     lf_stack_push(&free_monitors, monitor);
 }
 
+static lw_bool_t
+monitor_ptr_lock_async(lw_monitor_ptrlock_t *ptrlock)
+{
+    return lw_bitlock64_lock_async(&ptrlock->atomic64,
+                                   monitor_lock_bit.atomic64,
+                                   monitor_wait_bit.atomic64);
+}
+
+static void
+monitor_ptr_lock_complete_wait(lw_monitor_ptrlock_t *ptrlock)
+{
+    lw_bitlock_complete_wait(&ptrlock->atomic64);
+}
+
+static void
+monitor_ptr_lock(lw_monitor_ptrlock_t *ptrlock)
+{
+    lw_bitlock64_lock(&ptrlock->atomic64, monitor_lock_bit.atomic64, monitor_wait_bit.atomic64);
+}
+
+static void
+monitor_ptr_unlock(lw_monitor_ptrlock_t *ptrlock)
+{
+    lw_bitlock64_unlock(&ptrlock->atomic64, monitor_lock_bit.atomic64, monitor_wait_bit.atomic64);
+}
+
+static lw_waiter_t *
+monitor_ptr_unlock_return_waiter(lw_monitor_ptrlock_t *ptrlock)
+{
+    return lw_bitlock64_unlock_return_waiter(&ptrlock->atomic64,
+                                             monitor_lock_bit.atomic64,
+                                             monitor_wait_bit.atomic64);
+}
+
+static void
+monitor_move_users(lw_monitor_t *curr, lw_monitor_t *new)
+{
+    lw_bitlock64_rekey(&curr->ptrlock.atomic64, &new->ptrlock.atomic64,
+                       monitor_lock_bit.atomic64, monitor_wait_bit.atomic64,
+                       monitor_cv_bit.atomic64);
+}
+
 /**
  * Currently only called with bitlock on chain head held.
+ * Since the head of the chain can still change its wait bits, the function still uses
+ * atomics to manipulate values. We can optimize it a little when operating on non-head
+ * elements.
  */
 static lw_monitor_t *
 find_monitor_for_ptr(void *ptr,
@@ -203,7 +249,9 @@ find_monitor_for_ptr(void *ptr,
                      lw_monitor_t **prev)
 {
     lw_uint64_t val_to_find = LW_PTR_2_NUM(ptr, lw_uint64_t);
+    lw_monitor_ptrlock_t to_insert;
     *prev = monitor;
+    to_insert.fields.ptr61 = LW_PTR_2_NUM(to_add_if_not_found, lw_uint64_t);
 
     lw_assert(LW_MONITOR_PTRLOCK_IS_LOCKED(&monitor->next));
 
@@ -214,7 +262,7 @@ find_monitor_for_ptr(void *ptr,
             lw_uint64_t old = 0;
             lw_bool_t inserted;
             inserted = lw_uint64_swap_with_mask(&monitor->next.atomic64, mask, &old,
-                                                LW_PTR_2_NUM(to_add_if_not_found, lw_uint64_t));
+                                                to_insert.atomic64);
             lw_assert(inserted);
             LW_UNUSED_PARAMETER(inserted);
             return to_add_if_not_found;
@@ -234,7 +282,7 @@ find_monitor_for_ptr(void *ptr,
             lw_uint64_t old = 0;
             lw_bool_t inserted;
             inserted = lw_uint64_swap_with_mask(&monitor->next.atomic64, mask, &old,
-                                                LW_PTR_2_NUM(to_add_if_not_found, lw_uint64_t));
+                                                to_insert.atomic64);
             lw_assert(inserted);
             LW_UNUSED_PARAMETER(inserted);
         }
@@ -245,8 +293,27 @@ find_monitor_for_ptr(void *ptr,
     return NULL;
 }
 
+static inline lw_bool_t
+head_is_only_monitor(void *ptr, lw_monitor_t *monitor)
+{
+    lw_monitor_t *prev;
+    lw_monitor_t *other;
+    monitor_ptr_lock(&monitor->next);
+    other = find_monitor_for_ptr(ptr, monitor, TRUE, NULL, &prev);
+    lw_assert(other == NULL);
+    monitor_ptr_unlock(&monitor->next);
+    return other == NULL;
+}
+
+/*
+ * Check if the given monitor is free to be reused or is already mapped to the given pointer
+ * and unlocked. If so, lock it and return true.
+ *
+ * If the monitor is already locked or there is a waiter on it for some other pointer, then it is
+ * in use and the function will return false.
+ */
 static lw_bool_t
-lw_monitor_grab_if_unused(lw_monitor_t *monitor, void *ptr)
+lw_monitor_grab_if_unused(lw_monitor_t *monitor, void *ptr, lw_uint64_t *previous_owner)
 {
     lw_monitor_ptrlock_t old = LW_MONITOR_PTRLOCK_INITIALIZER;
     lw_monitor_ptrlock_t new = LW_MONITOR_PTRLOCK_INIT_LOCKED_WITH_PTR(ptr);
@@ -254,13 +321,18 @@ lw_monitor_grab_if_unused(lw_monitor_t *monitor, void *ptr)
     old.atomic64 = monitor->ptrlock.atomic64;
     do {
         if (old.fields.cv == 1 && old.fields.ptr61 != new.fields.ptr61) {
+            *previous_owner = old.fields.ptr61;
             return FALSE; // Monitor in use by some other thread.
         }
         if (old.fields.lock == 1) {
-            lw_assert(old.fields.wait == 1);
+            *previous_owner = old.fields.ptr61;
             return FALSE; // Locked.
         }
+        lw_assert(old.fields.wait == 0);
+        new.fields.cv = old.fields.cv;
     } while (!lw_uint64_swap(&monitor->ptrlock.atomic64, &old.atomic64, new.atomic64));
+
+    *previous_owner = old.fields.ptr61;
     return TRUE;
 }
 
@@ -271,7 +343,6 @@ lw_monitor_lock_if_ptr_matches(lw_monitor_t *monitor, void *ptr, lw_bool_t sync)
     lw_uint64_t ptr61 = LW_PTR_2_NUM(ptr, lw_uint64_t);
 
     old.fields.ptr61 = ptr61;
-    old.fields.cv = 0;
     do {
         if (old.fields.ptr61 != ptr61) {
             return FALSE;
@@ -288,9 +359,9 @@ lw_monitor_lock(void *ptr)
 {
     lw_uint32_t hash = LW_MONITOR_PTR_HASH32(ptr);
     lw_uint32_t slot = hash % fixed_count;
-    lw_monitor_t *monitor = &monitors[slot];
-    lw_bool_t got_lock;
-    lw_uint64_t ptr64 = LW_PTR_2_NUM(ptr, lw_uint64_t);
+    lw_monitor_t * const monitor = &monitors[slot];
+    lw_bool_t got_monitor;
+    lw_uint64_t previous_owner; // For debugging.
     lw_uint32_t loop = 0;
 
 
@@ -302,22 +373,22 @@ lw_monitor_lock(void *ptr)
     lw_verify(LW_MONITOR_PTR_IS_ACCEPTABLE(ptr));
 
 top:
-    got_lock = lw_monitor_grab_if_unused(monitor, ptr);
-    if (got_lock && monitor->next.monitor_ptr == NULL) {
+    got_monitor = lw_monitor_grab_if_unused(monitor, ptr, &previous_owner);
+    if (got_monitor && monitor->next.monitor_ptr == NULL) {
         /*
          * Common case: Got lock from the chain head and there is no other link or
-         * activity related to the chain links.
+         * on-going activity related to the chain links.
          */
+        lw_assert(head_is_only_monitor(ptr, monitor));
         return monitor_get_id(monitor);
     }
 
-    lw_bitlock64_lock(&monitor->next.atomic64, monitor_lock_bit.atomic64,
-                      monitor_wait_bit.atomic64);
+    monitor_ptr_lock(&monitor->next);
 
-    if (got_lock) {
+    if (got_monitor) {
         /* Did get lock. This is checking to see if another thread had inserted a copy in the chain. */
         lw_monitor_t *prev;
-        lw_monitor_t *another_copy = find_monitor_for_ptr(monitor, ptr, TRUE, NULL, &prev);
+        lw_monitor_t *another_copy = find_monitor_for_ptr(ptr, monitor, TRUE, NULL, &prev);
         if (another_copy) {
             /*
              * Need to wait for this 2nd link to go away. Any new callers are going to block on the
@@ -325,30 +396,26 @@ top:
              * lock and dispose of it.
              */
             lw_bool_t popped;
+            lw_monitor_ptrlock_t new_after_swap, old;
             lw_uint64_t mask = monitor_lock_bit.atomic64 | monitor_wait_bit.atomic64 |
                                monitor_cv_bit.atomic64;
-            popped = lw_uint64_swap_with_mask(&prev->next.atomic64, mask, &ptr64,
-                                              another_copy->next.fields.ptr61);
+            new_after_swap.fields.ptr61 = another_copy->next.fields.ptr61;
+            old.fields.ptr61 = LW_PTR_2_NUM(another_copy, lw_uint64_t);
+            popped = lw_uint64_swap_with_mask(&prev->next.atomic64, mask, &old.atomic64,
+                                              new_after_swap.atomic64);
             lw_verify(popped);
 
-            const lw_bool_t got_lock = lw_bitlock64_lock_async(&another_copy->ptrlock.atomic64,
-                                                               monitor_lock_bit.atomic64,
-                                                               monitor_wait_bit.atomic64);
-            lw_bitlock64_unlock(&monitor->next.atomic64,
-                                monitor_lock_bit.atomic64,
-                                monitor_wait_bit.atomic64);
+            another_copy->next.fields.ptr61 = 0;
+            const lw_bool_t got_lock = monitor_ptr_lock_async(&another_copy->ptrlock);
+            monitor_ptr_unlock(&monitor->next);
             if (!got_lock) {
-                lw_bitlock_complete_wait(&another_copy->ptrlock.atomic64);
+                monitor_ptr_lock_complete_wait(&another_copy->ptrlock);
             }
-            lw_bitlock64_rekey(&another_copy->ptrlock.atomic64, &monitor->ptrlock.atomic64,
-                               monitor_lock_bit.atomic64, monitor_wait_bit.atomic64,
-                               monitor_cv_bit.atomic64);
+            monitor_move_users(another_copy, monitor);
             lw_monitor_release(another_copy);
         } else {
             /* Other monitors on chain refer to other pointers. */
-            lw_bitlock64_unlock(&monitor->next.atomic64,
-                                monitor_lock_bit.atomic64,
-                                monitor_wait_bit.atomic64);
+            monitor_ptr_unlock(&monitor->next);
         }
         return monitor_get_id(monitor);
     } else if (lw_monitor_lock_if_ptr_matches(monitor, ptr, FALSE)) {
@@ -356,10 +423,8 @@ top:
          * Did not get lock right away but that was because the monitor was
          * locked.
          */
-        lw_bitlock64_unlock(&monitor->next.atomic64,
-                            monitor_lock_bit.atomic64,
-                            monitor_wait_bit.atomic64);
-        lw_bitlock_complete_wait(&monitor->ptrlock.atomic64);
+        monitor_ptr_unlock(&monitor->next);
+        monitor_ptr_lock_complete_wait(&monitor->ptrlock);
         return monitor_get_id(monitor);
     } else {
         lw_monitor_t *monitor_to_add;
@@ -371,29 +436,24 @@ top:
         lw_verify(existing_monitor != NULL);
         if (existing_monitor == monitor) {
             /* The head of chain has become the one after all. */
-            lw_bitlock64_unlock(&monitor->next.atomic64,
-                                monitor_lock_bit.atomic64,
-                                monitor_wait_bit.atomic64);
+            monitor_ptr_unlock(&monitor->next);
             lw_monitor_release(monitor_to_add);
             loop++;
             lw_assert(loop < 128); // Just a hueristic guess.
             goto top;
         } else if (existing_monitor == monitor_to_add) {
             /* New monitor added. Nothing more to do. */
-            lw_bitlock64_unlock(&monitor->next.atomic64,
-                                monitor_lock_bit.atomic64,
-                                monitor_wait_bit.atomic64);
+            /* XXX: not quite... need to recheck monitor here i think. */
+            monitor_ptr_unlock(&monitor->next);
+            lw_assert(existing_monitor->ptrlock.fields.lock == 1);
             return monitor_get_id(monitor_to_add);
         } else {
             /* Found an existing entry. */
-            const lw_bool_t got_lock = lw_bitlock64_lock_async(&existing_monitor->ptrlock.atomic64,
-                                                               monitor_lock_bit.atomic64,
-                                                               monitor_wait_bit.atomic64);
-            lw_bitlock64_unlock(&monitor->next.atomic64,
-                                monitor_lock_bit.atomic64,
-                                monitor_wait_bit.atomic64);
+            lw_monitor_release(monitor_to_add);
+            const lw_bool_t got_lock = monitor_ptr_lock_async(&existing_monitor->ptrlock);
+            monitor_ptr_unlock(&monitor->next);
             if (!got_lock) {
-                lw_bitlock_complete_wait(&existing_monitor->ptrlock.atomic64);
+                monitor_ptr_lock_complete_wait(&existing_monitor->ptrlock);
             }
             return monitor_get_id(existing_monitor);
         }
@@ -418,9 +478,7 @@ lw_monitor_unlock(void *ptr, lw_monitor_id_t id)
 
     current.atomic64 = monitor->ptrlock.atomic64;
     lw_assert(current.fields.ptr61 == ptr64);
-    new_owner = lw_bitlock64_unlock_return_waiter(&monitor->ptrlock.atomic64,
-                                                  monitor_lock_bit.atomic64,
-                                                  monitor_wait_bit.atomic64);
+    new_owner = monitor_ptr_unlock_return_waiter(&monitor->ptrlock);
     if (new_owner != NULL) {
         lw_waiter_wakeup(new_owner, &monitor->ptrlock.atomic64);
         /* Nothing more to do. */
@@ -439,32 +497,28 @@ lw_monitor_unlock(void *ptr, lw_monitor_id_t id)
     slot = hash % fixed_count;
     chain_head = &monitors[slot];
     /* XXX/TODO: What if the system is already shut down at this point? */
-    lw_bitlock64_lock(&chain_head->next.atomic64,
-                      monitor_lock_bit.atomic64,
-                      monitor_wait_bit.atomic64);
-    in_chain = find_monitor_for_ptr(chain_head, ptr, FALSE, NULL, &prev);
-    lw_verify(in_chain == monitor || in_chain == NULL);
-    if (in_chain == NULL) {
+    monitor_ptr_lock(&chain_head->next);
+    in_chain = find_monitor_for_ptr(ptr, chain_head, TRUE, NULL, &prev);
+    if (in_chain != monitor) {
         /* Element removed already by some other thread. */
-        lw_bitlock64_unlock(&chain_head->next.atomic64,
-                            monitor_lock_bit.atomic64,
-                            monitor_wait_bit.atomic64);
+        monitor_ptr_unlock(&chain_head->next);
         return;
     } else {
-        lw_assert(in_chain == monitor);
         popped = FALSE;
         current.atomic64 = in_chain->ptrlock.atomic64;
         current.fields.ptr61 = 0;
         if (current.atomic64 == 0) {
+            lw_monitor_ptrlock_t new_after_swap, old;
             lw_uint64_t mask = monitor_lock_bit.atomic64 | monitor_wait_bit.atomic64 |
                                monitor_cv_bit.atomic64;
-            popped = lw_uint64_swap_with_mask(&prev->next.atomic64, mask, &ptr64,
-                                              prev->next.fields.ptr61);
-            lw_bitlock64_unlock(&chain_head->next.atomic64,
-                                monitor_lock_bit.atomic64,
-                                monitor_wait_bit.atomic64);
+            old.fields.ptr61 = LW_PTR_2_NUM(in_chain, lw_uint64_t);
+            new_after_swap.fields.ptr61 = in_chain->next.fields.ptr61;
+            popped = lw_uint64_swap_with_mask(&prev->next.atomic64, mask, &old.atomic64,
+                                              new_after_swap.atomic64);
         }
+        monitor_ptr_unlock(&chain_head->next);
         if (popped) {
+            in_chain->ptrlock.fields.lock = 1; // Set for lw_monitor_release as it expects it.
             lw_monitor_release(in_chain);
         }
         return;
@@ -472,13 +526,52 @@ lw_monitor_unlock(void *ptr, lw_monitor_id_t id)
 }
 
 void
-lw_monitor_wait(void *ptr, lw_monitor_id_t id)
+lw_monitor_wait(void *ptr, lw_monitor_id_t *id)
+{
+    lw_monitor_t *monitor = monitor_from_id(*id);
+    lw_waiter_t *waiter = lw_waiter_get();
+    lw_uint64_t *lock_woken_from;
+
+    lw_assert(monitor->ptrlock.fields.ptr61 == LW_PTR_2_NUM(ptr, lw_uint64_t));
+    /* XXX: need to know here which lock this woke up with... */
+    lw_bitlock64_cv_wait(&monitor->ptrlock.atomic64,
+                         monitor_lock_bit.atomic64,
+                         monitor_wait_bit.atomic64,
+                         monitor_cv_bit.atomic64,
+                         FALSE);
+    lw_waiter_wait(waiter);
+    lock_woken_from = waiter->event.wait_src;
+    lw_waiter_clear_src(waiter);
+    if (lock_woken_from == &monitor->ptrlock.atomic64) {
+        return;
+    }
+    /* The monitor to use got remapped. */
+    monitor = LW_FIELD_2_OBJ(lock_woken_from, *monitor, ptrlock.atomic64);
+    *id = monitor_get_id(monitor);
+}
+
+void
+lw_monitor_signal(void *ptr, lw_monitor_id_t id)
 {
     lw_monitor_t *monitor = monitor_from_id(id);
 
     lw_assert(monitor->ptrlock.fields.ptr61 == LW_PTR_2_NUM(ptr, lw_uint64_t));
-    lw_bitlock64_cv_wait(&monitor->ptrlock.atomic64,
-                         monitor_lock_bit.atomic64,
-                         monitor_wait_bit.atomic64,
-                         monitor_cv_bit.atomic64);
+    lw_bitlock64_cv_signal(&monitor->ptrlock.atomic64,
+                           monitor_lock_bit.atomic64,
+                           monitor_wait_bit.atomic64,
+                           monitor_cv_bit.atomic64);
+
+}
+
+void
+lw_monitor_broadcast(void *ptr, lw_monitor_id_t id)
+{
+    lw_monitor_t *monitor = monitor_from_id(id);
+
+    lw_assert(monitor->ptrlock.fields.ptr61 == LW_PTR_2_NUM(ptr, lw_uint64_t));
+    lw_bitlock64_cv_broadcast(&monitor->ptrlock.atomic64,
+                              monitor_lock_bit.atomic64,
+                              monitor_wait_bit.atomic64,
+                              monitor_cv_bit.atomic64);
+
 }
