@@ -137,7 +137,7 @@ lw_uint64_cmpxchg(volatile lw_uint64_t *var,
  *
  * Atomically add increment value to the int pointed to by var
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var,
                    LW_IN lw_uint32_t increment)
 {
@@ -160,7 +160,7 @@ lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var,
  *
  * Atomically add increment value to the int pointed to by var
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var,
                    LW_IN lw_uint64_t increment)
 {
@@ -185,7 +185,7 @@ lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var,
  *
  * @return The value originally contained in var.
  */
-static inline lw_uint32_t ALWAYS_INLINED
+static inline lw_uint32_t ALWAYS_INLINE
 lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var,
                     LW_IN lw_uint32_t increment)
 {
@@ -211,7 +211,7 @@ lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var,
  *
  * @return The value originally contained in var.
  */
-static inline lw_uint64_t ALWAYS_INLINED
+static inline lw_uint64_t ALWAYS_INLINE
 lw_uint64_lock_xadd(volatile lw_uint64_t *var, lw_uint64_t increment)
 {
     lw_assert(((uintptr_t)var) % sizeof(*var) == 0);
@@ -320,7 +320,7 @@ lw_uint64_cmpxchg(LW_INOUT volatile lw_uint64_t *var,
  *
  * Atomically add increment value to the int pointed to by var
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var,
                    LW_IN lw_uint32_t increment)
 {
@@ -347,7 +347,7 @@ lw_uint32_lock_add(LW_INOUT volatile lw_uint32_t *var,
  *
  * @return The value originally contained in var.
  */
-static inline lw_uint32_t ALWAYS_INLINED
+static inline lw_uint32_t ALWAYS_INLINE
 lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var,
                     LW_IN lw_uint32_t increment)
 {
@@ -372,7 +372,7 @@ lw_uint32_lock_xadd(LW_INOUT volatile lw_uint32_t *var,
  *
  * Atomically add increment value to the int pointed to by var
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var,
                    LW_IN lw_uint64_t increment)
 {
@@ -398,7 +398,7 @@ lw_uint64_lock_add(LW_INOUT volatile lw_uint64_t *var,
  *
  * @return The value originally contained in var.
  */
-static inline lw_uint64_t ALWAYS_INLINED
+static inline lw_uint64_t ALWAYS_INLINE
 lw_uint64_lock_xadd(LW_INOUT volatile lw_uint64_t *var,
                     LW_IN lw_uint64_t increment)
 {
@@ -421,7 +421,7 @@ lw_uint64_lock_xadd(LW_INOUT volatile lw_uint64_t *var,
  * which returns a bool to indicate if the swap occured. On failure,
  * updates the old value.
  */
-static inline lw_bool_t ALWAYS_INLINED
+static inline lw_bool_t ALWAYS_INLINE
 lw_uint64_swap(LW_INOUT lw_uint64_t volatile *var,
                LW_INOUT lw_uint64_t volatile *old,
                LW_IN lw_uint64_t new)
@@ -436,7 +436,7 @@ lw_uint64_swap(LW_INOUT lw_uint64_t volatile *var,
     return FALSE;
 }
 
-static inline lw_bool_t ALWAYS_INLINED
+static inline lw_bool_t ALWAYS_INLINE
 lw_uint32_swap(LW_INOUT lw_uint32_t volatile *var,
                LW_INOUT lw_uint32_t volatile *old,
                LW_IN lw_uint32_t new)
@@ -482,7 +482,7 @@ lw_uint32_swap(LW_INOUT lw_uint32_t volatile *var,
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic32_set(LW_INOUT lw_atomic32_t *atomic,
                 LW_IN lw_uint32_t val)
 {
@@ -501,7 +501,7 @@ lw_atomic32_set(LW_INOUT lw_atomic32_t *atomic,
  *
  * @return Value contained in the input atomic variable
  */
-static inline lw_uint32_t ALWAYS_INLINED
+static inline lw_uint32_t ALWAYS_INLINE
 lw_atomic32_read(LW_IN lw_atomic32_t *atomic)
 {
     return (atomic->val);
@@ -519,7 +519,7 @@ lw_atomic32_read(LW_IN lw_atomic32_t *atomic)
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic32_inc(LW_INOUT lw_atomic32_t *atomic)
 {
     lw_uint32_lock_inc(&atomic->val);
@@ -537,7 +537,7 @@ lw_atomic32_inc(LW_INOUT lw_atomic32_t *atomic)
  *
  * @return Value following increment
  */
-static inline lw_uint32_t ALWAYS_INLINED
+static inline lw_uint32_t ALWAYS_INLINE
 lw_atomic32_inc_with_ret(LW_INOUT lw_atomic32_t *atomic)
 {
     // lw_uint32_lock_xinc returns old value
@@ -556,7 +556,7 @@ lw_atomic32_inc_with_ret(LW_INOUT lw_atomic32_t *atomic)
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic32_dec(LW_INOUT lw_atomic32_t *atomic)
 {
     lw_uint32_lock_dec(&atomic->val);
@@ -574,7 +574,7 @@ lw_atomic32_dec(LW_INOUT lw_atomic32_t *atomic)
  *
  * @return Value following decrement
  */
-static inline lw_uint32_t ALWAYS_INLINED
+static inline lw_uint32_t ALWAYS_INLINE
 lw_atomic32_dec_with_ret(LW_INOUT lw_atomic32_t *atomic)
 {
     return lw_uint32_lock_xdec(&atomic->val) - 1;
@@ -593,7 +593,7 @@ lw_atomic32_dec_with_ret(LW_INOUT lw_atomic32_t *atomic)
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic32_add(LW_INOUT lw_atomic32_t *atomic,
                 LW_IN lw_uint32_t i)
 {
@@ -613,7 +613,7 @@ lw_atomic32_add(LW_INOUT lw_atomic32_t *atomic,
  *
  * @return Value following addition
  */
-static inline lw_uint32_t ALWAYS_INLINED
+static inline lw_uint32_t ALWAYS_INLINE
 lw_atomic32_add_with_ret(LW_INOUT lw_atomic32_t *atomic,
                          LW_IN lw_uint32_t i)
 {
@@ -633,7 +633,7 @@ lw_atomic32_add_with_ret(LW_INOUT lw_atomic32_t *atomic,
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic32_sub(LW_INOUT lw_atomic32_t *atomic,
                 LW_IN lw_uint32_t i)
 {
@@ -653,7 +653,7 @@ lw_atomic32_sub(LW_INOUT lw_atomic32_t *atomic,
  *
  * @return Value following subtraction
  */
-static inline lw_uint32_t ALWAYS_INLINED
+static inline lw_uint32_t ALWAYS_INLINE
 lw_atomic32_sub_with_ret(LW_INOUT lw_atomic32_t *atomic,
                          LW_IN lw_uint32_t i)
 {
@@ -675,7 +675,7 @@ lw_atomic32_sub_with_ret(LW_INOUT lw_atomic32_t *atomic,
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic64_set(LW_INOUT lw_atomic64_t *atomic,
                 LW_IN lw_uint64_t val)
 {
@@ -694,7 +694,7 @@ lw_atomic64_set(LW_INOUT lw_atomic64_t *atomic,
  *
  * @return Value contained in the input atomic variable
  */
-static inline lw_uint64_t ALWAYS_INLINED
+static inline lw_uint64_t ALWAYS_INLINE
 lw_atomic64_read(LW_IN lw_atomic64_t *atomic)
 {
     return (atomic->val);
@@ -712,7 +712,7 @@ lw_atomic64_read(LW_IN lw_atomic64_t *atomic)
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic64_inc(LW_INOUT lw_atomic64_t *atomic)
 {
     lw_uint64_lock_inc(&atomic->val);
@@ -730,7 +730,7 @@ lw_atomic64_inc(LW_INOUT lw_atomic64_t *atomic)
  *
  * @return Value following increment
  */
-static inline lw_uint64_t ALWAYS_INLINED
+static inline lw_uint64_t ALWAYS_INLINE
 lw_atomic64_inc_with_ret(LW_INOUT lw_atomic64_t *atomic)
 {
     return lw_uint64_lock_xinc(&atomic->val) + 1;
@@ -748,7 +748,7 @@ lw_atomic64_inc_with_ret(LW_INOUT lw_atomic64_t *atomic)
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic64_dec(LW_INOUT lw_atomic64_t *atomic)
 {
     lw_uint64_lock_dec(&atomic->val);
@@ -766,7 +766,7 @@ lw_atomic64_dec(LW_INOUT lw_atomic64_t *atomic)
  *
  * @return Value following decrement
  */
-static inline lw_uint64_t ALWAYS_INLINED
+static inline lw_uint64_t ALWAYS_INLINE
 lw_atomic64_dec_with_ret(LW_INOUT lw_atomic64_t *atomic)
 {
     return lw_uint64_lock_xdec(&atomic->val) - 1;
@@ -785,7 +785,7 @@ lw_atomic64_dec_with_ret(LW_INOUT lw_atomic64_t *atomic)
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic64_add(LW_INOUT lw_atomic64_t *atomic,
                 LW_IN lw_uint64_t i)
 {
@@ -805,7 +805,7 @@ lw_atomic64_add(LW_INOUT lw_atomic64_t *atomic,
  *
  * @return Value following addition
  */
-static inline lw_uint64_t ALWAYS_INLINED
+static inline lw_uint64_t ALWAYS_INLINE
 lw_atomic64_add_with_ret(LW_INOUT lw_atomic64_t *atomic,
                          LW_IN lw_uint64_t i)
 {
@@ -825,7 +825,7 @@ lw_atomic64_add_with_ret(LW_INOUT lw_atomic64_t *atomic,
  *
  * @return none
  */
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_atomic64_sub(lw_atomic64_t *atomic, lw_uint64_t i)
 {
     lw_uint64_lock_sub(&atomic->val, i);
@@ -844,7 +844,7 @@ lw_atomic64_sub(lw_atomic64_t *atomic, lw_uint64_t i)
  *
  * @return Value following subtraction
  */
-static inline lw_uint64_t ALWAYS_INLINED
+static inline lw_uint64_t ALWAYS_INLINE
 lw_atomic64_sub_with_ret(lw_atomic64_t *atomic, lw_uint64_t i)
 {
     return lw_uint64_lock_xsub(&atomic->val, i) - i;
@@ -864,7 +864,7 @@ lw_atomic64_sub_with_ret(lw_atomic64_t *atomic, lw_uint64_t i)
  *
  * @return TRUE if value updated with new. FALSE otherwise. old is updated to current value on failure.
  */
-static inline lw_bool_t ALWAYS_INLINED
+static inline lw_bool_t ALWAYS_INLINE
 lw_uint64_swap_with_mask(LW_INOUT lw_uint64_t volatile *var,
                          LW_IN lw_uint64_t retain_mask,
                          LW_INOUT lw_uint64_t volatile *old,
@@ -902,7 +902,7 @@ lw_uint64_swap_with_mask(LW_INOUT lw_uint64_t volatile *var,
  *
  * @return TRUE if value updated with new. FALSE otherwise. old is updated to current value on failure.
  */
-static inline lw_bool_t ALWAYS_INLINED
+static inline lw_bool_t ALWAYS_INLINE
 lw_uint32_swap_with_mask(LW_INOUT lw_uint32_t volatile *var,
                          LW_IN lw_uint32_t retain_mask,
                          LW_INOUT lw_uint32_t volatile *old,

@@ -92,40 +92,40 @@ lw_waiter_from_id(LW_IN lw_uint32_t id)
                                                     id);
 }
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_waiter_assert_src(LW_IN lw_waiter_t *waiter, void *wait_src)
 {
     lw_assert(waiter->event.wait_src == wait_src);
 }
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_waiter_change_src(lw_waiter_t *waiter, void *curr, void *new)
 {
     lw_waiter_assert_src(waiter, curr);
     waiter->event.wait_src = new;
 }
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_waiter_set_src(lw_waiter_t *waiter, void *wait_src)
 {
     lw_waiter_change_src(waiter, NULL, wait_src);
 }
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_waiter_clear_src(lw_waiter_t *waiter)
 {
     lw_assert(waiter->event.wait_src != NULL);
     waiter->event.wait_src = NULL;
 }
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_waiter_wait(LW_INOUT lw_waiter_t *waiter)
 {
     lw_event_wait(&waiter->event,
                   waiter->event.wait_src);
 }
 
-static inline int ALWAYS_INLINED
+static inline int ALWAYS_INLINE
 lw_waiter_timedwait(LW_INOUT lw_waiter_t *waiter,
                     LW_IN struct timespec *abstime)
 {
@@ -134,7 +134,7 @@ lw_waiter_timedwait(LW_INOUT lw_waiter_t *waiter,
                               abstime);
 }
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_waiter_wakeup(LW_INOUT lw_waiter_t *waiter,
                  LW_INOUT void *arg)
 {

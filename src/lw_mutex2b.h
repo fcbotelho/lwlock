@@ -36,7 +36,7 @@ lw_mutex2b_trylock(LW_INOUT lw_mutex2b_t *lw_mutex2b);
 extern void
 lw_mutex2b_lock_with_waiter(LW_INOUT lw_mutex2b_t *lw_mutex2b, lw_waiter_t *waiter);
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
 {
     lw_waiter_t *waiter = lw_waiter_get();
@@ -50,7 +50,7 @@ lw_mutex2b_lock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
 extern void
 lw_mutex2b_unlock_with_waiter(LW_INOUT lw_mutex2b_t *lw_mutex2b, lw_waiter_t *waiter);
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_mutex2b_unlock(LW_INOUT lw_mutex2b_t *lw_mutex2b)
 {
     lw_waiter_t *waiter = lw_waiter_get();

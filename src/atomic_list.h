@@ -467,13 +467,7 @@ extern lw_bool_t adlist_iter_seek(adlist_iter_t *const iter,
 
 extern void adlist_iter_destroy(adlist_iter_t *const iter);
 
-#define _ADL_ITEM_FROM_LINK(_linkp, _type, _member)      \
-(\
-{ \
-    char *_lp = (_linkp); \
-    (_lp == NULL ? NULL : (_type *)(_lp - offsetof(_type, _member)));\
-}                                                          \
-)
+#define _ADL_ITEM_FROM_LINK(_linkp, _type, _member) LW_FIELD_2_OBJ_NULL_SAFE(_linkp, _type, _member)
 
 #define ADL_NEXT(_listp, _itemp, _type, _member)                   \
     _ADL_ITEM_FROM_LINK(_adl_next(_listp, &((_itemp)->_member)), _type, _member)

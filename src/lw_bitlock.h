@@ -57,7 +57,7 @@ lw_bitlock32_lock_async(lw_uint32_t *lock,
 
 void lw_bitlock_complete_wait(void *lock);
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_bitlock32_lock(lw_uint32_t *lock,
                   LW_IN lw_uint32_t lock_mask,
                   LW_IN lw_uint32_t wait_mask)
@@ -102,7 +102,7 @@ lw_bitlock32_unlock_return_waiter(lw_uint32_t *lock,
                                   LW_IN lw_uint32_t lock_mask,
                                   LW_IN lw_uint32_t wait_mask);
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_bitlock32_unlock(lw_uint32_t *lock, LW_IN lw_uint32_t lock_mask, LW_IN lw_uint32_t wait_mask)
 {
     lw_waiter_t *waiter = lw_bitlock32_unlock_return_waiter(lock, lock_mask, wait_mask);
@@ -139,7 +139,7 @@ lw_bitlock64_lock_async(lw_uint64_t *lock,
                         LW_IN lw_uint64_t lock_mask,
                         LW_IN lw_uint64_t wait_mask);
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_bitlock64_lock(lw_uint64_t *lock,
                   LW_IN lw_uint64_t lock_mask,
                   LW_IN lw_uint64_t wait_mask)
@@ -172,7 +172,7 @@ lw_bitlock64_unlock_return_waiter(lw_uint64_t *lock,
                                   LW_IN lw_uint64_t lock_mask,
                                   LW_IN lw_uint64_t wait_mask);
 
-static inline void ALWAYS_INLINED
+static inline void ALWAYS_INLINE
 lw_bitlock64_unlock(lw_uint64_t *lock, LW_IN lw_uint64_t lock_mask, LW_IN lw_uint64_t wait_mask)
 {
     lw_waiter_t *waiter = lw_bitlock64_unlock_return_waiter(lock, lock_mask, wait_mask);

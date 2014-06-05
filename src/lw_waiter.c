@@ -27,7 +27,7 @@ typedef struct lw_thread_event_s {
 typedef struct {
     lw_waiter_t _waiter;
     lw_uint8_t  pad_for_thread_event[sizeof(lw_thread_event_t) - sizeof(lw_base_event_t)];
-} lw_waiter_global_t;
+} PACKED lw_waiter_global_t;
 
 static lw_waiter_t *
 lw_waiter_domain_alloc_global(LW_INOUT lw_waiter_domain_t *domain);
@@ -270,9 +270,7 @@ lw_waiter_domain_init_global(lw_waiter_domain_t *domain)
     lw_global_waiters_domain.lw_wgd_domain.id2waiter = lw_waiter_domain_from_id_global;
     lw_global_waiters_domain.lw_wgd_domain.waiter_event_init = lw_waiter_global_event_init;
     lw_global_waiters_domain.lw_wgd_domain.waiter_event_destroy = lw_waiter_global_event_destroy;
-    lw_global_waiters_domain.lw_wgd_domain.waiter_size = sizeof(lw_waiter_t) +
-                                                         sizeof(lw_thread_event_t) -
-                                                         sizeof(lw_base_event_t);
+    lw_global_waiters_domain.lw_wgd_domain.waiter_size = sizeof(lw_waiter_global_t);
 
     pthread_mutex_unlock(&lw_waiter_global_domain_lock);
 }

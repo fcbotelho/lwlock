@@ -16,7 +16,7 @@
 #define ALIGNED(_a)             __attribute__((aligned(_a)))
 #define PACKED                  __attribute__((packed))
 #define INLINE                  inline
-#define ALWAYS_INLINED          __attribute__ ((always_inline))
+#define ALWAYS_INLINE           __attribute__ ((always_inline))
 
 #define LW_IN const
 #define LW_OUT
