@@ -92,20 +92,30 @@ lw_event_wakeup_pending(LW_INOUT lw_event_t _event,
 }
 
 static inline void
+lw_event_iface_init(LW_INOUT lw_event_t event,
+                    LW_INOUT lw_event_signal_func_t signal,
+                    LW_INOUT lw_event_wait_func_t wait,
+                    LW_INOUT  lw_event_wakeup_pending_func_t wakeup_pending)
+{
+    lw_event_iface_t *iface = LW_EVENT_2_IFACE(event);
+
+#ifdef LW_DEBUG
+    iface->magic = LW_EVENT_MAGIC;
+#endif
+
+    lw_dl_init_elem(&iface->link);
+    iface->signal = signal;
+    iface->wait = wait;
+    iface->wakeup_pending = wakeup_pending;
+}
+
+static inline void
 lw_base_event_init(LW_INOUT lw_base_event_t *base_event,
                    LW_INOUT lw_event_signal_func_t signal,
                    LW_INOUT lw_event_wait_func_t wait,
                    LW_INOUT  lw_event_wakeup_pending_func_t wakeup_pending)
 {
-    lw_dl_init_elem(&base_event->iface.link);
-
-#ifdef LW_DEBUG
-    base_event->iface.magic = LW_EVENT_MAGIC;
-#endif
-
-    base_event->iface.signal = signal;
-    base_event->iface.wait = wait;
-    base_event->iface.wakeup_pending = wakeup_pending;
+    lw_event_iface_init(base_event, signal, wait, wakeup_pending);
     base_event->wait_src = NULL;
     base_event->tag = LW_MAX_UINT64;
 }

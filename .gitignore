@@ -29,6 +29,7 @@ examples/lw_condvar_example
 examples/lw_mutex_example
 examples/lw_bitlock_example
 examples/lw_monitor_example
+examples/counter_example
 faq.html
 index.html
 install-sh
