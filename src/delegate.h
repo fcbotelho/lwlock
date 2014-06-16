@@ -45,7 +45,7 @@ typedef struct {
     delegatedFunc       func;       // The func to run.
     void                *arg;       // The arg to func.
     lw_bool_t           is_blocked; // Job is blocked.
-    lw_event_iface_t    event;      // For linking delegated functions and for signaling delegator.
+    lw_base_event_t     event;      // For linking delegated functions and for signaling delegator.
                                     // Keep last to allow for subclassed events.
 } delegated_job_t;
 
@@ -66,6 +66,8 @@ struct delegate_s {
 
 void delegate_init(delegate_t *delegate);
 void delegate_deinit(delegate_t *delegate);
+void delegate_job_event_default_init(delegated_job_t *job);
+
 void delegate_run(delegate_t *delegate, lw_bool_t no_wait);
 void delegate_run_internal(delegate_t *delegate);
 void delegate_submit(delegate_t *delegate, delegated_job_t *job, lw_bool_t run_now);

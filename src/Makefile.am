@@ -43,7 +43,8 @@ liblwlock_la_SOURCES =  lw_lock.h \
 						lf_stack.c \
 						lw_monitor.c \
 						delegate.c \
-						counter.c
+						counter.c \
+						lw_event.c
 
 liblwlock_la_LDFLAGS = -version-info 0:0:0
 liblwlock_la_LIBADD  = $(PTHREAD_LIBS)

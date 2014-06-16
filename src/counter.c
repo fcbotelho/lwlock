@@ -65,68 +65,13 @@ counter_alloc_job(delegate_t *delegate, void *arg)
     return DELEGATED_BLOCK_ALL;
 }
 
-static int
-counter_async_event_wait(lw_event_t event, void *arg, const struct timespec *abstime)
-{
-    counter_async_alloc_ctx_t *ctx = LW_FIELD_2_OBJ(event, *ctx, alloc_job.event);
-    counter_t *counter = LW_FIELD_2_OBJ(arg, *counter, delegate);
-    lw_waiter_domain_t *domain = lw_waiter_global_domain;
-    lw_uint8_t  waiter_buf[domain->waiter_size];
-    lw_waiter_t *waiter = (lw_waiter_t *)waiter_buf;
-
-    LW_UNUSED_PARAMETER(abstime);
-    if (lw_atomic32_read(&ctx->done_countdown) == 1) {
-        /* Done signal already received. */
-        lw_atomic32_set(&ctx->done_countdown, 0);
-        return 0;
-    }
-    domain->waiter_event_init(domain, waiter);
-    lw_waiter_set_src(waiter, counter);
-    ctx->waiter = waiter;
-    if (lw_atomic32_dec_with_ret(&ctx->done_countdown) != 0) {
-        lw_waiter_wait(waiter);
-    }
-    lw_waiter_clear_src(waiter);
-    domain->waiter_event_destroy(domain, waiter);
-    return 0;
-}
-
-static void
-counter_async_event_signal(lw_event_t event, void *arg)
-{
-    counter_async_alloc_ctx_t *ctx = LW_FIELD_2_OBJ(event, *ctx, alloc_job.event);
-    counter_t *counter = LW_FIELD_2_OBJ(arg, *counter, delegate);
-    lw_waiter_t *waiter;
-
-    if (lw_atomic32_dec_with_ret(&ctx->done_countdown) != 0) {
-        /* Caller hasn't called wait yet. Nothing more to do. */
-        return;
-    }
-
-    waiter = ctx->waiter;
-    lw_waiter_wakeup(waiter, arg);
-    return;
-}
-
-static lw_bool_t
-counter_async_event_wakeup_pending(lw_event_t event, void *arg)
-{
-    counter_async_alloc_ctx_t *ctx = LW_FIELD_2_OBJ(event, *ctx, alloc_job.event);
-    return lw_atomic32_read(&ctx->done_countdown) == 1;
-}
-
 static void
 counter_async_alloc_ctx_init(counter_async_alloc_ctx_t *ctx, lw_uint32_t need)
 {
     ctx->need = need;
-    lw_atomic32_set(&ctx->done_countdown, 2);
-    ctx->waiter = NULL; // Set when caller finally waits.
     ctx->alloc_job.func = counter_alloc_job;
     ctx->alloc_job.arg = ctx;
-    lw_event_iface_init(&ctx->alloc_job.event,
-                        counter_async_event_signal,
-                        counter_async_event_wait,
-                        counter_async_event_wakeup_pending);
+    delegate_job_event_default_init(&ctx->alloc_job);
 }
 
 lw_bool_t

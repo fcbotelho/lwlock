@@ -91,7 +91,7 @@ push_incoming(delegate_t *delegate, delegated_job_t *job, delegate_state_t *chan
 
     old = (uintptr_t)delegate->incoming_stack;
     do {
-        job->event.link.next = (lw_delem_t *)delegate->incoming_stack;
+        job->event.iface.link.next = (lw_delem_t *)delegate->incoming_stack;
     } while (!lw_uint64_swap((volatile lw_uint64_t *)&delegate->incoming_stack,
                               &old, (lw_uint64_t)job));
 
@@ -132,9 +132,9 @@ drain_incoming(delegate_t *delegate)
 
     last_inserted = NULL;
     while (job != NULL) {
-        delegated_job_t *next_to_process = (delegated_job_t *)job->event.link.next;
-        ASSERT_ELEM_OFF_LIST(&job->event.link);
-        lw_dl_init_elem(&job->event.link);
+        delegated_job_t *next_to_process = (delegated_job_t *)job->event.iface.link.next;
+        ASSERT_ELEM_OFF_LIST(&job->event.iface.link);
+        lw_dl_init_elem(&job->event.iface.link);
         if (job->func == delegate_cancel_job ||
             job->func == job_to_unblock_another_job) {
             /*
@@ -142,23 +142,23 @@ drain_incoming(delegate_t *delegate)
              * actually be able to cancel the job in the first place. Same for
              * unblocking.
              */
-            lw_dl_append_at_end(&immediate_reqs, &job->event.link);
+            lw_dl_append_at_end(&immediate_reqs, &job->event.iface.link);
             job = next_to_process;
             continue;
         }
         if (last_inserted == NULL) {
-            lw_dl_append_at_end(&delegate->queued_jobs, &job->event.link);
+            lw_dl_append_at_end(&delegate->queued_jobs, &job->event.iface.link);
         } else {
-            lw_dl_insert_before(&delegate->queued_jobs, &last_inserted->event.link,
-                                &job->event.link);
+            lw_dl_insert_before(&delegate->queued_jobs, &last_inserted->event.iface.link,
+                                &job->event.iface.link);
         }
-        lw_assert(lw_dl_elem_is_in_list(&delegate->queued_jobs, &job->event.link));
+        lw_assert(lw_dl_elem_is_in_list(&delegate->queued_jobs, &job->event.iface.link));
         last_inserted = job;
         job = next_to_process;
     }
 
     while ((elem = lw_dl_dequeue(&immediate_reqs)) != NULL) {
-        job = LW_FIELD_2_OBJ(elem, *job, event.link);
+        job = LW_FIELD_2_OBJ(elem, *job, event.iface.link);
         delegate_job_status_t status = job->func(delegate, job->arg);
         lw_verify(status == DELEGATED_DONE);
         lw_event_signal(&job->event, delegate);
@@ -175,7 +175,7 @@ run_queued_jobs(delegate_t *delegate)
     delegate_job_status_t status;
 
     while (delegate->queued_jobs.head != NULL) {
-        job_to_run = LW_FIELD_2_OBJ(delegate->queued_jobs.head, *job_to_run, event.link);
+        job_to_run = LW_FIELD_2_OBJ(delegate->queued_jobs.head, *job_to_run, event.iface.link);
 
         lw_assert(!job_to_run->is_blocked && job_to_run->delegate == delegate);;
         status = job_to_run->func(delegate, job_to_run->arg);
@@ -189,7 +189,7 @@ run_queued_jobs(delegate_t *delegate)
                 break;
             case DELEGATED_YIELD:
                 LW_IGNORE_RETURN_VALUE(lw_dl_dequeue(&delegate->queued_jobs));
-                lw_dl_append_at_end(&delegate->queued_jobs, &job_to_run->event.link);
+                lw_dl_append_at_end(&delegate->queued_jobs, &job_to_run->event.iface.link);
                 break;
             case DELEGATED_BLOCK_ALL:
                 /* Means that processing should be stopped and resumed later. */
@@ -197,7 +197,7 @@ run_queued_jobs(delegate_t *delegate)
             case DELEGATED_BLOCK_THIS:
                 job_to_run->is_blocked = TRUE;
                 LW_IGNORE_RETURN_VALUE(lw_dl_dequeue(&delegate->queued_jobs));
-                lw_dl_append_at_end(&delegate->blocked_jobs, &job_to_run->event.link);
+                lw_dl_append_at_end(&delegate->blocked_jobs, &job_to_run->event.iface.link);
                 break;
             case DELEGATED_RELOAD:
                 break; // Just loop again.
@@ -299,7 +299,7 @@ delegate_submit(delegate_t *delegate, delegated_job_t *job, lw_bool_t run_now)
 
     if (fast_path) {
         lw_assert(lw_dl_get_count(&delegate->queued_jobs) == 0);
-        lw_dl_append_at_end(&delegate->queued_jobs, &job->event.link);
+        lw_dl_append_at_end(&delegate->queued_jobs, &job->event.iface.link);
         delegate_run_internal(delegate);
         return;
     }
@@ -314,28 +314,6 @@ delegate_submit(delegate_t *delegate, delegated_job_t *job, lw_bool_t run_now)
     return;
 }
 
-static int
-simple_event_wait(lw_event_t event, void *arg, const struct timespec *abstime)
-{
-    lw_event_iface_t *iface = LW_EVENT_2_IFACE(event);
-    lw_waiter_t *waiter = (lw_waiter_t *)iface->wakeup_pending;;
-    LW_UNUSED_PARAMETER(event);
-    LW_UNUSED_PARAMETER(arg);
-    LW_UNUSED_PARAMETER(abstime);
-    lw_waiter_assert_src(waiter, arg);
-    lw_waiter_wait(waiter);
-    return 0;
-}
-
-static void
-simple_event_signal(lw_event_t event, void *arg)
-{
-    lw_event_iface_t *iface = LW_EVENT_2_IFACE(event);
-    lw_waiter_t *waiter = (lw_waiter_t *)iface->wakeup_pending;;
-    lw_waiter_assert_src(waiter, arg);
-    lw_waiter_wakeup(waiter, arg);
-}
-
 static lw_bool_t
 job_still_with_delegate(delegate_t *delegate, delegated_job_t *job, lw_bool_t remove)
 {
@@ -344,8 +322,8 @@ job_still_with_delegate(delegate_t *delegate, delegated_job_t *job, lw_bool_t re
     lw_assert(delegate->state.fields.lock == 1);
 
     if (job->delegate != delegate) {
-        lw_assert(!lw_dl_elem_is_in_list(&delegate->blocked_jobs, &job->event.link));
-        lw_assert(!lw_dl_elem_is_in_list(&delegate->queued_jobs, &job->event.link));
+        lw_assert(!lw_dl_elem_is_in_list(&delegate->blocked_jobs, &job->event.iface.link));
+        lw_assert(!lw_dl_elem_is_in_list(&delegate->queued_jobs, &job->event.iface.link));
         return FALSE;
     }
 
@@ -355,13 +333,13 @@ job_still_with_delegate(delegate_t *delegate, delegated_job_t *job, lw_bool_t re
         list = &delegate->queued_jobs;
     }
 
-    if (lw_dl_elem_is_in_list(list, &job->event.link)) {
+    if (lw_dl_elem_is_in_list(list, &job->event.iface.link)) {
         if (remove) {
-            lw_dl_remove(list, &job->event.link);
+            lw_dl_remove(list, &job->event.iface.link);
         }
         return TRUE;
     }
-    ASSERT_ELEM_OFF_LIST(&job->event.link);
+    ASSERT_ELEM_OFF_LIST(&job->event.iface.link);
     return FALSE;
 }
 
@@ -421,8 +399,7 @@ delegate_cancel(delegate_t *delegate, delegated_job_t *job, lw_bool_t wait)
     cancel_job.arg = &cancel_args;
     domain->waiter_event_init(domain, waiter);
     lw_waiter_set_src(waiter, delegate);
-    lw_event_iface_init(&cancel_job.event, simple_event_signal, simple_event_wait,
-                        (lw_event_wakeup_pending_func_t)waiter);
+    delegate_job_event_default_init(&cancel_job);
     delegate_submit(delegate, &cancel_job, TRUE);
     lw_event_wait(&cancel_job.event, delegate);
     lw_waiter_clear_src(waiter);
@@ -438,10 +415,10 @@ job_to_unblock_another_job(delegate_t *delegate, void *arg)
     lw_assert(delegate->state.fields.lock == 1);
     lw_verify(to_unblock->delegate == delegate && to_unblock->is_blocked);
 
-    lw_assert(lw_dl_elem_is_in_list(&delegate->blocked_jobs, &to_unblock->event.link));
-    lw_dl_remove(&delegate->blocked_jobs, &to_unblock->event.link);
+    lw_assert(lw_dl_elem_is_in_list(&delegate->blocked_jobs, &to_unblock->event.iface.link));
+    lw_dl_remove(&delegate->blocked_jobs, &to_unblock->event.iface.link);
     to_unblock->is_blocked = FALSE;
-    lw_dl_append_at_end(&delegate->queued_jobs, &to_unblock->event.link);
+    lw_dl_append_at_end(&delegate->queued_jobs, &to_unblock->event.iface.link);
 
     return DELEGATED_DONE;
 }
@@ -469,8 +446,7 @@ delegate_unblock_job(delegate_t *delegate, delegated_job_t *job)
     unblock_job.func = job_to_unblock_another_job;
     domain->waiter_event_init(domain, waiter);
     lw_waiter_set_src(waiter, delegate);
-    lw_event_iface_init(&unblock_job.event, simple_event_signal, simple_event_wait,
-                        (lw_event_wakeup_pending_func_t)waiter);
+    delegate_job_event_default_init(&unblock_job);
     delegate_submit(delegate, &unblock_job, TRUE);
     lw_event_wait(&unblock_job.event, delegate);
     lw_waiter_clear_src(waiter);
@@ -500,3 +476,12 @@ delegate_deinit(delegate_t *delegate)
     lw_dl_destroy(&delegate->blocked_jobs);
 }
 
+/**
+ * Initialize the event in a job to the default one. It uses a on stack waiter when it needs
+ * to wait. Callers do not have to use this. It is here for convenience of common use case.
+ */
+void
+delegate_job_event_default_init(delegated_job_t *job)
+{
+    lw_stack_base_event_init(&job->event);
+}

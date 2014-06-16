@@ -42,8 +42,6 @@ typedef struct {
 typedef struct {
     delegated_job_t alloc_job;
     lw_uint32_t     need;
-    lw_atomic32_t   done_countdown;
-    lw_waiter_t     *waiter;
 } counter_async_alloc_ctx_t;
 
 void counter_init(counter_t *counter, lw_uint32_t max, lw_bool_t hard_max);
@@ -68,7 +66,6 @@ static INLINE void
 counter_async_alloc_finish_wait(counter_t *counter, counter_async_alloc_ctx_t *ctx)
 {
     lw_event_wait(&ctx->alloc_job.event, &counter->delegate);
-    lw_assert(lw_atomic32_read(&ctx->done_countdown) == 0);
 }
 
 #endif /* __COUNTER_H__ */
