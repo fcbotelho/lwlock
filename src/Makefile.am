@@ -11,7 +11,9 @@ include_HEADERS = lw_lock.h \
 				  lf_stack.h \
 				  lw_monitor.h \
 				  delegate.h \
-				  counter.h
+				  counter.h \
+				  ptr_map.h \
+				  slist32.h
 
 liblwlock_la_SOURCES =  lw_lock.h \
                         lw_types.h \
@@ -44,7 +46,9 @@ liblwlock_la_SOURCES =  lw_lock.h \
 						lw_monitor.c \
 						delegate.c \
 						counter.c \
-						lw_event.c
+						lw_event.c \
+						ptr_map.c \
+						slist32.c
 
 liblwlock_la_LDFLAGS = -version-info 0:0:0
 liblwlock_la_LIBADD  = $(PTHREAD_LIBS)
