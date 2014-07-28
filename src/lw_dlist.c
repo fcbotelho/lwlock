@@ -11,12 +11,6 @@
 #include "lw_debug.h"
 #include "lw_rwlock.h"
 
-#define ASSERT_ELEM_ON_LIST(_list, _elem)   \
-    lw_assert((_elem)->list == _list && (_elem)->magic == LW_DL_ON_LIST)
-
-#define ASSERT_ELEM_OFF_LIST(_elem)   \
-    lw_assert((_elem)->list == LW_DL_DBG_BADLIST && (_elem)->magic == LW_DL_OFF_LIST)
-
 #define LW_DL_LIST_LOCK(_list)      ((lw_rwlock_t *)&((_list)->_lock))
 
 void
@@ -117,6 +111,11 @@ lw_dl_insert_after(LW_INOUT lw_dlist_t *list,
         existing->next = new;
     }
 
+    /* set up back link. */
+    if (new->next != NULL) {
+        new->next->prev = new;
+    }
+
     if (existing == list->tail) {
         /* Need to update tail. */
         list->tail = new;
@@ -127,6 +126,7 @@ lw_dl_insert_after(LW_INOUT lw_dlist_t *list,
 #ifdef LW_DEBUG
     new->list = list;
     new->magic = LW_DL_ON_LIST;
+    lw_dl_assert_count(list);
 #endif
 }
 
@@ -143,6 +143,8 @@ lw_dl_remove(LW_INOUT lw_dlist_t *list, lw_delem_t *elem)
 
     ASSERT_ELEM_ON_LIST(list, elem);
     lw_assert(list->count > 0);
+    lw_dl_assert_count(list);
+    lw_assert(lw_dl_elem_is_in_list(list, elem));
 
     prev = elem->prev;
     next = elem->next;
@@ -164,6 +166,40 @@ lw_dl_remove(LW_INOUT lw_dlist_t *list, lw_delem_t *elem)
     list->count--;
     lw_dl_init_elem(elem);
 }
+
+lw_bool_t
+lw_dl_elem_is_in_list(LW_IN lw_dlist_t *list, LW_IN lw_delem_t *elem)
+{
+    lw_delem_t *in_list = list->head;
+
+    lw_assert(elem != NULL);
+
+    while (in_list != NULL && in_list != elem) {
+        in_list = lw_dl_next(list, in_list);
+    }
+    return in_list == elem;
+}
+
+#ifdef LW_DEBUG
+void
+lw_dl_assert_count(LW_IN lw_dlist_t *list)
+{
+    lw_uint32_t counted = 0;
+    lw_delem_t *elem = list->head;
+    while (elem != NULL) {
+        counted++;
+        elem = lw_dl_next(list, elem);
+    }
+    lw_assert(counted == list->count);
+    counted = 0;
+    elem = list->tail;
+    while (elem != NULL) {
+        counted++;
+        elem = lw_dl_prev(list, elem);
+    }
+    lw_assert(counted == list->count);
+}
+#endif
 
 void
 lw_dl_lock_writer(LW_INOUT lw_dlist_t *list)

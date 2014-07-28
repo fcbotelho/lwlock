@@ -19,22 +19,31 @@
 #define LW_DL_DBG_BADELEM   ((lw_delem_t *)0xdeadbeef)
 #define LW_DL_DBG_BADLIST   ((lw_dlist_t *)0xfeedface)
 
+#define ASSERT_ELEM_ON_LIST(_list, _elem)   \
+    lw_assert((_elem)->list == _list && (_elem)->magic == LW_DL_ON_LIST)
+
+#define ASSERT_ELEM_OFF_LIST(_elem)   \
+    lw_assert((_elem)->list == LW_DL_DBG_BADLIST && (_elem)->magic == LW_DL_OFF_LIST)
+
 /*
  * Forward reference for use within a list element structure.
  */
 typedef struct lw_dlist_struct lw_dlist_t;
 
+
 /**
  * Generic List Element structure
  */
-typedef struct {
-    void *next;    /**< Pointer to the next element in the list */
-    void *prev;    /**< Pointer to the previous element in the list */
+typedef struct lw_delem_s lw_delem_t;
+
+struct lw_delem_s {
+    lw_delem_t *next;    /**< Pointer to the next element in the list */
+    lw_delem_t *prev;    /**< Pointer to the previous element in the list */
 #ifdef LW_DEBUG
     lw_dlist_t *list;
     lw_magic_t magic;
 #endif
-} lw_delem_t;
+};
 
 
 /**
@@ -99,6 +108,20 @@ extern lw_delem_t *lw_dl_next(LW_IN lw_dlist_t *list, lw_delem_t *elem);
 extern lw_delem_t *lw_dl_prev(LW_IN lw_dlist_t *list, lw_delem_t *elem);
 extern void lw_dl_insert_before(LW_INOUT lw_dlist_t *list, lw_delem_t *existing, lw_delem_t *new);
 extern void lw_dl_insert_after(LW_INOUT lw_dlist_t *list, lw_delem_t *existing, lw_delem_t *new);
+extern lw_bool_t lw_dl_elem_is_in_list(LW_IN lw_dlist_t *list, LW_IN lw_delem_t *elem);
+
+#ifdef LW_DEBUG
+extern void lw_dl_assert_count(LW_IN lw_dlist_t *list);
+#else
+#define lw_dl_assert_count(list)    /* Nothing. */
+#endif
+
+static INLINE void
+lw_dl_insert_at_front(LW_INOUT lw_dlist_t *list, lw_delem_t *new)
+{
+    lw_dl_insert_after(list, NULL, new);
+}
+
 extern void lw_dl_remove(LW_INOUT lw_dlist_t *list, lw_delem_t *elem);
 
 extern void lw_dl_lock_writer(LW_INOUT lw_dlist_t *list);
