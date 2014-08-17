@@ -33,7 +33,7 @@ counter_deinit(counter_t *counter)
  * be FALSE to ignore the delegate internal bits).
  */
 static lw_bool_t
-counter_reserve_work(counter_t *counter, lw_uint32_t need, lw_bool_t fair)
+counter_reserve_work(counter_t *counter, lw_uint32_t need, lw_bool_t fair, lw_uint64_t *updated)
 {
     counter_state_t old, new;
     counter_state_t *state = (counter_state_t *)&counter->delegate.state;
@@ -49,16 +49,20 @@ counter_reserve_work(counter_t *counter, lw_uint32_t need, lw_bool_t fair)
         new.fields.available -= need;
     } while (!lw_uint64_swap(&state->atomic64, &old.atomic64, new.atomic64));
 
+    if (updated != NULL) {
+        *updated = new.atomic64;
+    }
+
     return TRUE;
 }
 
 static delegate_job_status_t
-counter_alloc_job(delegate_t *delegate, void *arg)
+counter_alloc_job(delegate_t *delegate, void *arg, lw_uint64_t *updated_state)
 {
     counter_async_alloc_ctx_t *ctx = (counter_async_alloc_ctx_t *)arg;
     counter_t *counter = LW_FIELD_2_OBJ(delegate, *counter, delegate);
 
-    if (counter_reserve_work(counter, ctx->need, FALSE)) {
+    if (counter_reserve_work(counter, ctx->need, FALSE, updated_state)) {
         /* All done. */
         return DELEGATED_DONE;
     }
@@ -77,7 +81,7 @@ counter_async_alloc_ctx_init(counter_async_alloc_ctx_t *ctx, lw_uint32_t need)
 lw_bool_t
 counter_try_alloc(counter_t *counter, lw_uint32_t need)
 {
-    return counter_reserve_work(counter, need, TRUE);
+    return counter_reserve_work(counter, need, TRUE, NULL);
 }
 
 /**

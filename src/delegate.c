@@ -16,8 +16,12 @@ typedef struct {
     int                 cancel_result;
 } delegate_cancel_arg_t;
 
-static delegate_job_status_t delegate_cancel_job(delegate_t *delegate, void *arg);
-static delegate_job_status_t job_to_unblock_another_job(delegate_t *delegate, void *arg);
+static delegate_job_status_t delegate_cancel_job(delegate_t *delegate,
+                                                 void *arg,
+                                                 lw_uint64_t *updated_state);
+static delegate_job_status_t job_to_unblock_another_job(delegate_t *delegate,
+                                                        void *arg,
+                                                        lw_uint64_t *updated_state);
 
 /**
  * Set the specified bits to 1. The bits argument on return will have the current state before
@@ -105,7 +109,7 @@ push_incoming(delegate_t *delegate, delegated_job_t *job, delegate_state_t *chan
  * opposite that of the push_incoming to avoid any race leaving dangling jobs.
  */
 static void
-drain_incoming(delegate_t *delegate)
+drain_incoming(delegate_t *delegate, delegate_state_t *old)
 {
     delegated_job_t *job, *last_inserted;
     delegate_state_t change;
@@ -159,7 +163,7 @@ drain_incoming(delegate_t *delegate)
 
     while ((elem = lw_dl_dequeue(&immediate_reqs)) != NULL) {
         job = LW_FIELD_2_OBJ(elem, *job, event.iface.link);
-        delegate_job_status_t status = job->func(delegate, job->arg);
+        delegate_job_status_t status = job->func(delegate, job->arg, &old->atomic64);
         lw_verify(status == DELEGATED_DONE);
         lw_event_signal(&job->event, delegate);
     }
@@ -169,7 +173,7 @@ drain_incoming(delegate_t *delegate)
  * Run all the queued jobs one at a time.
  */
 static void
-run_queued_jobs(delegate_t *delegate)
+run_queued_jobs(delegate_t *delegate, delegate_state_t *old)
 {
     delegated_job_t *job_to_run;
     delegate_job_status_t status;
@@ -178,7 +182,7 @@ run_queued_jobs(delegate_t *delegate)
         job_to_run = LW_FIELD_2_OBJ(delegate->queued_jobs.head, *job_to_run, event.iface.link);
 
         lw_assert(!job_to_run->is_blocked && job_to_run->delegate == delegate);;
-        status = job_to_run->func(delegate, job_to_run->arg);
+        status = job_to_run->func(delegate, job_to_run->arg, &old->atomic64);
 
         switch (status) {
             case DELEGATED_DONE:
@@ -222,10 +226,10 @@ delegate_run_internal(delegate_t *delegate)
     old.atomic64 = state->atomic64;
     lw_assert(old.fields.lock == 1);
     do {
-        drain_incoming(delegate);
+        drain_incoming(delegate, &old);
         old.fields.incoming = 0;
 
-        run_queued_jobs(delegate);
+        run_queued_jobs(delegate, &old);
         new.atomic64 = old.atomic64;
         new.fields.pending = lw_dl_get_count(&delegate->queued_jobs) > 0;
         if (old.fields.waiting == 0) {
@@ -344,7 +348,7 @@ job_still_with_delegate(delegate_t *delegate, delegated_job_t *job, lw_bool_t re
 }
 
 static delegate_job_status_t
-delegate_cancel_job(delegate_t *delegate, void *arg)
+delegate_cancel_job(delegate_t *delegate, void *arg, lw_uint64_t *updated_state)
 {
     delegate_cancel_arg_t *cancel_arg = (delegate_cancel_arg_t *)arg;
 
@@ -382,7 +386,7 @@ delegate_cancel(delegate_t *delegate, delegated_job_t *job, lw_bool_t wait)
 
     if (delegate_try_lock(delegate)) {
         int ret;
-        drain_incoming(delegate);
+        drain_incoming(delegate, NULL);
         if (job_still_with_delegate(delegate, job, TRUE)) {
             ret = 0;
         } else {
@@ -408,7 +412,7 @@ delegate_cancel(delegate_t *delegate, delegated_job_t *job, lw_bool_t wait)
 }
 
 static delegate_job_status_t
-job_to_unblock_another_job(delegate_t *delegate, void *arg)
+job_to_unblock_another_job(delegate_t *delegate, void *arg, lw_uint64_t *updated_state)
 {
     delegated_job_t *to_unblock = (delegated_job_t *)arg;
 
@@ -436,7 +440,7 @@ delegate_unblock_job(delegate_t *delegate, delegated_job_t *job)
     lw_waiter_t *waiter = (lw_waiter_t *)waiter_buf;
 
     if (delegate_try_lock(delegate)) {
-        delegate_job_status_t status = job_to_unblock_another_job(delegate, job);
+        delegate_job_status_t status = job_to_unblock_another_job(delegate, job, NULL);
         lw_verify(status == DELEGATED_DONE);
         delegate_run_internal(delegate); // Will release lock.
         return;

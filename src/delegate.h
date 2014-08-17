@@ -38,7 +38,9 @@ typedef enum {
 struct delegate_s;
 typedef struct delegate_s delegate_t;
 
-typedef delegate_job_status_t (*delegatedFunc)(delegate_t *delegate, void *arg);
+typedef delegate_job_status_t (*delegatedFunc)(delegate_t *delegate,
+                                               void *arg,
+                                               lw_uint64_t *updated_state);
 
 typedef struct {
     delegate_t          *delegate;  // For validation during cancel.
