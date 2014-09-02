@@ -71,6 +71,9 @@ typedef struct {
     volatile lw_uint64_t  val;
 } lw_atomic64_t;
 
+/* A generic callback function signature type. */
+typedef void (*callback_func_t)(void *arg);
+
 #define LW_MAX_UINT16 ((lw_uint16_t)~0)
 #define LW_MAX_UINT32 ((lw_uint32_t)~0)
 #define LW_MAX_UINT64 ((lw_uint64_t)~0)

@@ -32,6 +32,7 @@ typedef enum {
     LW_LOCK_TYPE_LWRWLOCK_WR,
     LW_LOCK_TYPE_BITLOCK32,
     LW_LOCK_TYPE_BITLOCK64,
+    LW_LOCK_TYPE_BITLOCK,
     LW_LOCK_TYPE_NONE /* a no-op lock that simulates presence of race */
 } lw_lock_type_t;
 
@@ -52,6 +53,8 @@ lw_lock_common_lock_type_description(lw_lock_type_t type) {
             return "LW_LOCK_TYPE_BITLOCK32";
         case LW_LOCK_TYPE_BITLOCK64:
             return "LW_LOCK_TYPE_BITLOCK64";
+        case LW_LOCK_TYPE_BITLOCK:
+            return "LW_LOCK_TYPE_BITLOCK";
         case LW_LOCK_TYPE_NONE:
             return "LW_LOCK_TYPE_NONE";
         default:
@@ -91,6 +94,11 @@ lw_lock_common_acquire_lock(LW_INOUT void *lock,
             lw_bitlock64_lock(spec->lock, spec->lock_mask, spec->wait_mask);
             break;
         }
+        case LW_LOCK_TYPE_BITLOCK: {
+            lw_bitlock_spec_t *spec = (lw_bitlock_spec_t *)lock;
+            lw_bitlock_lock(spec);
+            break;
+        }
         case LW_LOCK_TYPE_NONE:
             /* no op */
             break;
@@ -128,6 +136,11 @@ lw_lock_common_drop_lock(LW_INOUT void *lock,
         case LW_LOCK_TYPE_BITLOCK64: {
             lw_bitlock64_spec_t *spec = (lw_bitlock64_spec_t *)lock;
             lw_bitlock64_unlock(spec->lock, spec->lock_mask, spec->wait_mask);
+            break;
+        }
+        case LW_LOCK_TYPE_BITLOCK: {
+            lw_bitlock_spec_t *spec = (lw_bitlock_spec_t *)lock;
+            lw_bitlock_unlock(spec);
             break;
         }
         case LW_LOCK_TYPE_NONE:
