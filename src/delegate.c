@@ -380,9 +380,6 @@ delegate_cancel(delegate_t *delegate, delegated_job_t *job, lw_bool_t wait)
 {
     delegated_job_t cancel_job;
     delegate_cancel_arg_t cancel_args;
-    lw_waiter_domain_t *domain = lw_waiter_global_domain;
-    lw_uint8_t  waiter_buf[domain->waiter_size];
-    lw_waiter_t *waiter = (lw_waiter_t *)waiter_buf;
 
     if (delegate_try_lock(delegate)) {
         int ret;
@@ -401,13 +398,9 @@ delegate_cancel(delegate_t *delegate, delegated_job_t *job, lw_bool_t wait)
     cancel_args.job_to_cancel = job;
     cancel_job.func = delegate_cancel_job;
     cancel_job.arg = &cancel_args;
-    domain->waiter_event_init(domain, waiter);
-    lw_waiter_set_src(waiter, delegate);
-    delegate_job_event_default_init(&cancel_job);
+    delegate_job_event_default_init(&cancel_job, delegate);
     delegate_submit(delegate, &cancel_job, TRUE);
     lw_event_wait(&cancel_job.event, delegate);
-    lw_waiter_clear_src(waiter);
-    domain->waiter_event_destroy(domain, waiter);
     return cancel_args.cancel_result;
 }
 
@@ -435,9 +428,6 @@ void
 delegate_unblock_job(delegate_t *delegate, delegated_job_t *job)
 {
     delegated_job_t unblock_job;
-    lw_waiter_domain_t *domain = lw_waiter_global_domain;
-    lw_uint8_t  waiter_buf[domain->waiter_size];
-    lw_waiter_t *waiter = (lw_waiter_t *)waiter_buf;
 
     if (delegate_try_lock(delegate)) {
         delegate_job_status_t status = job_to_unblock_another_job(delegate, job, NULL);
@@ -448,13 +438,9 @@ delegate_unblock_job(delegate_t *delegate, delegated_job_t *job)
 
     unblock_job.arg = job;
     unblock_job.func = job_to_unblock_another_job;
-    domain->waiter_event_init(domain, waiter);
-    lw_waiter_set_src(waiter, delegate);
-    delegate_job_event_default_init(&unblock_job);
+    delegate_job_event_default_init(&unblock_job, delegate);
     delegate_submit(delegate, &unblock_job, TRUE);
     lw_event_wait(&unblock_job.event, delegate);
-    lw_waiter_clear_src(waiter);
-    domain->waiter_event_destroy(domain, waiter);
     return;
 }
 
@@ -485,7 +471,8 @@ delegate_deinit(delegate_t *delegate)
  * to wait. Callers do not have to use this. It is here for convenience of common use case.
  */
 void
-delegate_job_event_default_init(delegated_job_t *job)
+delegate_job_event_default_init(delegated_job_t *job, void *wait_src)
 {
     lw_stack_base_event_init(&job->event);
+    job->event.wait_src = wait_src;
 }

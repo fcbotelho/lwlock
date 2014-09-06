@@ -70,12 +70,12 @@ counter_alloc_job(delegate_t *delegate, void *arg, lw_uint64_t *updated_state)
 }
 
 static void
-counter_async_alloc_ctx_init(counter_async_alloc_ctx_t *ctx, lw_uint32_t need)
+counter_async_alloc_ctx_init(counter_t *counter, counter_async_alloc_ctx_t *ctx, lw_uint32_t need)
 {
     ctx->need = need;
     ctx->alloc_job.func = counter_alloc_job;
     ctx->alloc_job.arg = ctx;
-    delegate_job_event_default_init(&ctx->alloc_job);
+    delegate_job_event_default_init(&ctx->alloc_job, &counter->delegate);
 }
 
 lw_bool_t
@@ -97,7 +97,7 @@ counter_alloc_async(counter_t *counter, lw_uint32_t need,
         return TRUE;
     }
 
-    counter_async_alloc_ctx_init(ctx, need);
+    counter_async_alloc_ctx_init(counter, ctx, need);
     delegate_submit(&counter->delegate, &ctx->alloc_job, TRUE);
     return FALSE;
 }

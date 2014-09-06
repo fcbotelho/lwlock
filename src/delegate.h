@@ -68,7 +68,7 @@ struct delegate_s {
 
 void delegate_init(delegate_t *delegate);
 void delegate_deinit(delegate_t *delegate);
-void delegate_job_event_default_init(delegated_job_t *job);
+void delegate_job_event_default_init(delegated_job_t *job, void *wait_src);
 
 void delegate_run(delegate_t *delegate, lw_bool_t no_wait);
 void delegate_run_internal(delegate_t *delegate);
