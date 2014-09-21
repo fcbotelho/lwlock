@@ -61,8 +61,9 @@ Wish List
 Interested?
 -----------
 
-If the functionality covered by lwlocks or any of the included strucutres, drop us a line! We would
-be happy to guide you in integrating the code with your own. If you are already using it, we would
-like to hear about your experience and any wish list items you may have. Any suggestions for
-improvements, actual code improvements and bug fixes are of course always welcome too.
+If the functionality covered by lwlocks or any of the included structures is of interest to you,
+drop us a line! We would be happy to guide you in integrating the code with your own. If you are
+already using it, we would like to hear about your experience and any wish list items you may have.
+Any suggestions for improvements, actual code improvements and bug fixes are of course always
+welcome too.
 
